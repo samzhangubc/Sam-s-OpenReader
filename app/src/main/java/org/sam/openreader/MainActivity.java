@@ -138,7 +138,7 @@ public class MainActivity extends Activity {
                 File working = new File(file + ".working");
                 String loaded = file.getName().toLowerCase(Locale.ROOT).endsWith(".epub") ?
                     epub(file) : new String(java.nio.file.Files.readAllBytes((working.exists() ? working : file).toPath()),
-                    Charset.forName(prefs.getString("encoding", "UTF-8")));
+                    working.exists() ? StandardCharsets.UTF_8 : Charset.forName(prefs.getString("encoding", "UTF-8")));
                 runOnUiThread(() -> { content = loaded; reader(); });
             } catch (Exception ex) { failure(ex); }
         });
@@ -308,13 +308,13 @@ public class MainActivity extends Activity {
         try {
             File saved = new File(book + ".undo");
             if (!saved.exists()) { message("No cleanup to undo"); return; }
-            content = java.nio.file.Files.readString(saved.toPath());
+            content = new String(java.nio.file.Files.readAllBytes(saved.toPath()), StandardCharsets.UTF_8);
             write(new File(book + ".working"), content); offset = 0; reader();
         } catch (Exception ex) { failure(ex); }
     }
     private void write(File file, String value) throws IOException {
         File staging = new File(file + ".part");
-        java.nio.file.Files.writeString(staging.toPath(), value);
+        java.nio.file.Files.write(staging.toPath(), value.getBytes(StandardCharsets.UTF_8));
         java.nio.file.Files.move(staging.toPath(), file.toPath(), java.nio.file.StandardCopyOption.REPLACE_EXISTING);
     }
     private void export() {

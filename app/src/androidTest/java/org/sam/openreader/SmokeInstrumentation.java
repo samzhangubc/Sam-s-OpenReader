@@ -18,7 +18,7 @@ public class SmokeInstrumentation extends Instrumentation {
             File folder=new File(getTargetContext().getFilesDir(),"books");
             folder.mkdirs();
             File sample=new File(folder,"1700000000000-Smoke.txt");
-            Files.writeString(sample.toPath(),"第一章 山雨\n\nA quiet harbour.\n\n第二章 歸途\n\nHello 🌙.");
+            Files.write(sample.toPath(),"第一章 山雨\n\nA quiet harbour.\n\n第二章 歸途\n\nHello 🌙.".getBytes(java.nio.charset.StandardCharsets.UTF_8));
             Intent launch=new Intent(getTargetContext(),MainActivity.class).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
             Activity activity=startActivitySync(launch);
             waitForIdleSync();
