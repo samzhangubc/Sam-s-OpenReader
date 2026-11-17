@@ -19,7 +19,7 @@ This alpha is debug-signed for sideload evaluation. Future builds may require un
 - Background speech has no synchronization back to the visual position. Paragraphs are split at line boundaries and long chunks. PDF TTS and robust voice selection are pending.
 - TXT/EPUB text is loaded into memory, with a 50 MiB import limit and additional EPUB extraction limits. Large-book streaming and SDD performance budgets remain unverified.
 - Previous-page layout uses an approximate preceding text window. Exact previous-page pagination, chapter/page footer totals, selection, search, bookmarks, deletion and full library backup remain pending.
-- Appearance choices currently last for the activity session. TXT edits reopen using the selected encoding, so keep UTF-8 selected for edited text.
+- Appearance colors currently last for the activity session. Typeface customization is pending.
 - No physical Samsung device validation has been performed. The build workflow includes an Android 15 emulator smoke test for opening a library TXT with Chinese and emoji.
 
 OpenReader is free of charge under the MIT License, with no SLA, guaranteed response time or promise of indefinite maintenance.

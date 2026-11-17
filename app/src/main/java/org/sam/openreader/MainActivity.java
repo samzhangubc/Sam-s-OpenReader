@@ -75,7 +75,7 @@ public class MainActivity extends Activity {
         }));
         ScrollView scroll = new ScrollView(this);
         LinearLayout list = new LinearLayout(this);
-        list.setOrientation(1);
+        list.setOrientation(LinearLayout.VERTICAL);
         File dir = new File(getFilesDir(), "books");
         File[] books = dir.listFiles(f -> !f.getName().endsWith(".working") && !f.getName().endsWith(".undo"));
         if (books != null) for (File f : books) {
@@ -229,7 +229,7 @@ public class MainActivity extends Activity {
     private void menu() {
         Dialog sheet = new Dialog(this);
         LinearLayout actions = new LinearLayout(this);
-        actions.setOrientation(1);
+        actions.setOrientation(LinearLayout.VERTICAL);
         for (String label : new String[]{"Contents / 目录", "Appearance", "Listen", "Clean up TXT", "Undo cleanup", "Export original", "Library"}) {
             actions.addView(button(label, () -> {
                 sheet.dismiss();
@@ -284,7 +284,7 @@ public class MainActivity extends Activity {
     }
     private void cleanup() {
         if (!book.getName().endsWith(".txt")) { message("TXT editing only"); return; }
-        LinearLayout fields = new LinearLayout(this); fields.setOrientation(1);
+        LinearLayout fields = new LinearLayout(this); fields.setOrientation(LinearLayout.VERTICAL);
         EditText find = new EditText(this), replace = new EditText(this);
         find.setHint("Find literal text"); replace.setHint("Replacement (empty deletes)");
         fields.addView(find); fields.addView(replace);
