@@ -1,0 +1,155 @@
+[
+  {
+    "id": "SourceHanSerifCN",
+    "file": "SourceHanSerifCN.otf",
+    "url": "https://raw.githubusercontent.com/adobe-fonts/source-han-serif/7889f11bf31170b5d092a083b357c8c8130f89e0/SubsetOTF/CN/SourceHanSerifCN-Regular.otf",
+    "license": "https://raw.githubusercontent.com/adobe-fonts/source-han-serif/7889f11bf31170b5d092a083b357c8c8130f89e0/LICENSE.txt",
+    "sha256": "3754ea669c530e2473354f8f6d9f79680a44d7e26ec7d00eeabee4a7e0753c5d",
+    "licenseSha256": "9ff5bb567e1b92c801fc1069e5fbf992ff8efccacb9db94e5959a5b3ba9bb903"
+  },
+  {
+    "id": "SourceHanSerifTW",
+    "file": "SourceHanSerifTW.otf",
+    "url": "https://raw.githubusercontent.com/adobe-fonts/source-han-serif/7889f11bf31170b5d092a083b357c8c8130f89e0/SubsetOTF/TW/SourceHanSerifTW-Regular.otf",
+    "license": "https://raw.githubusercontent.com/adobe-fonts/source-han-serif/7889f11bf31170b5d092a083b357c8c8130f89e0/LICENSE.txt",
+    "sha256": "45f730307894dbe594366ed022efee4f9c4dcc0f41dc5db87c9ef8b8c0588bde",
+    "licenseSha256": "9ff5bb567e1b92c801fc1069e5fbf992ff8efccacb9db94e5959a5b3ba9bb903"
+  },
+  {
+    "id": "SourceHanSansCN",
+    "file": "SourceHanSansCN.otf",
+    "url": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/a4f7cf94edfb9d7ffbdfc4841de276358bd7e0f2/SubsetOTF/CN/SourceHanSansCN-Regular.otf",
+    "license": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/a4f7cf94edfb9d7ffbdfc4841de276358bd7e0f2/LICENSE.txt",
+    "sha256": "e2bc8a2e7f37474b774fff8db758681ece40bb6947a90d571bce9dd60671a8e4",
+    "licenseSha256": "fcac737e761ec63dbfbdce11030a1780161920d80315edba9c8beff1c2bac5a2"
+  },
+  {
+    "id": "SourceHanSansTW",
+    "file": "SourceHanSansTW.otf",
+    "url": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/a4f7cf94edfb9d7ffbdfc4841de276358bd7e0f2/SubsetOTF/TW/SourceHanSansTW-Regular.otf",
+    "license": "https://raw.githubusercontent.com/adobe-fonts/source-han-sans/a4f7cf94edfb9d7ffbdfc4841de276358bd7e0f2/LICENSE.txt",
+    "sha256": "5034bc32aa64bc93ce673fe05752724bb31fc6757c6bc1d23e925052c54fd2ac",
+    "licenseSha256": "fcac737e761ec63dbfbdce11030a1780161920d80315edba9c8beff1c2bac5a2"
+  },
+  {
+    "id": "WenKai",
+    "file": "WenKai.ttf",
+    "url": "https://raw.githubusercontent.com/lxgw/LxgwWenKai/d20c88d9ed1570a54ef09b46f37724712bbe0203/fonts/TTF/LXGWWenKai-Regular.ttf",
+    "license": "https://raw.githubusercontent.com/lxgw/LxgwWenKai/d20c88d9ed1570a54ef09b46f37724712bbe0203/OFL.txt",
+    "sha256": "2d73eea94ad808999d90c0000c239a84a33b09d4bc6ab6c5b8bbf1eda8a7fc8b",
+    "licenseSha256": "1a25e35da1031c6c3436fde545bb9cb5aca954e9873afe510c834b8b79bd21a0"
+  },
+  {
+    "id": "WenKaiTC",
+    "file": "WenKaiTC.ttf",
+    "url": "https://raw.githubusercontent.com/lxgw/LxgwWenKaiTC/a689a17490f509abb5d7dd434f6aaf1473a13724/fonts/TTF/LXGWWenKaiTC-Regular.ttf",
+    "license": "https://raw.githubusercontent.com/lxgw/LxgwWenKaiTC/a689a17490f509abb5d7dd434f6aaf1473a13724/OFL.txt",
+    "sha256": "6662480a3f95b4a90c80b189c679617a48adce3a505118a6af63ce5a482b83fa",
+    "licenseSha256": "1a13783bf4337242834b60309cdcdbeb566ae3f923576fdbba8b78db9d174def"
+  },
+  {
+    "id": "GenRyuMin",
+    "file": "GenRyuMin.otf",
+    "url": "https://raw.githubusercontent.com/ButTaiwan/genryu-font/030cd4fa3dd6b0607c5e7f35f13977a2e0a10522/otf/TC/GenRyuMin2TC-R.otf",
+    "license": "https://raw.githubusercontent.com/ButTaiwan/genryu-font/030cd4fa3dd6b0607c5e7f35f13977a2e0a10522/SIL_Open_Font_License_1.1.txt",
+    "sha256": "8b4988af4fb8e7fea14245fdd61fa309ad730cb7c79a5b861eabe84db5a16774",
+    "licenseSha256": "d84b652ca46586043946969a33c1dbf5a43028440825ae744a325965bec4c8fb"
+  },
+  {
+    "id": "GenYoMin",
+    "file": "GenYoMin.otf",
+    "url": "https://raw.githubusercontent.com/ButTaiwan/genyo-font/880b7c9721b62ae813b737cdeca23fccba7d665b/otf/TC/GenYoMin2TC-R.otf",
+    "license": "https://raw.githubusercontent.com/ButTaiwan/genyo-font/880b7c9721b62ae813b737cdeca23fccba7d665b/SIL_Open_Font_License_1.1.txt",
+    "sha256": "585606291e7b73a4fcee260d2da291568e1c87ce5b111e8486dee69110638c5f",
+    "licenseSha256": "d84b652ca46586043946969a33c1dbf5a43028440825ae744a325965bec4c8fb"
+  },
+  {
+    "id": "Huninn",
+    "file": "Huninn.ttf",
+    "url": "https://raw.githubusercontent.com/justfont/open-huninn-font/f240f9071a78298f379bc087cae2010df11cf477/font/jf-openhuninn-2.1.ttf",
+    "license": "https://raw.githubusercontent.com/justfont/open-huninn-font/f240f9071a78298f379bc087cae2010df11cf477/LICENSE",
+    "sha256": "9d5bf4932d31fe94c18cd8cfddc98bc1b14ce10f4e354c682179db290a99c825",
+    "licenseSha256": "5df6de36ba2fe26119ac161edbed97c62a9da3c1493f6930b9d9af7f5c93004b"
+  },
+  {
+    "id": "Iansui",
+    "file": "Iansui.ttf",
+    "url": "https://raw.githubusercontent.com/ButTaiwan/iansui/9d9a8e68bf1e138dd91e562eeff28d95bca33196/fonts/ttf/Iansui-Regular.ttf",
+    "license": "https://raw.githubusercontent.com/ButTaiwan/iansui/9d9a8e68bf1e138dd91e562eeff28d95bca33196/OFL.txt",
+    "sha256": "7f1aa62e9dcbf40d0ce41a5d3f1e5ea602e66c295778ac6fefb6b84d8ed08bd5",
+    "licenseSha256": "912ffe9248119b16385be59859bf709e0f221ca82a1bc89f5bac2a78ab0cb5ae"
+  },
+  {
+    "id": "CMUSerif",
+    "file": "CMUSerif.ttf",
+    "url": "https://raw.githubusercontent.com/dreampulse/computer-modern-web-font/e9977be1283466992a2dede47a342655d8426fee/font/Serif/cmunrm.ttf",
+    "license": "https://raw.githubusercontent.com/dreampulse/computer-modern-web-font/e9977be1283466992a2dede47a342655d8426fee/font/Serif/OFL.txt",
+    "sha256": "3deb3c529a46d391eaad2e2b896824013d4e1922419c91ab6cb75c40db97c3f2",
+    "licenseSha256": "73273dffdefe2e5f1e138084d4a4b65b1c50df2ab0179f78484f31beefe30d84"
+  },
+  {
+    "id": "SourceSerif4",
+    "file": "SourceSerif4.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/sourceserif4/SourceSerif4%5Bopsz,wght%5D.ttf",
+    "license": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/sourceserif4/OFL.txt",
+    "sha256": "97b2d4da6e3cb494b5a1e66ae176914d852ccabef49e0c02c0df25f3e39aca0b",
+    "licenseSha256": "5f94c3fd3a23131a417ab5a0c8452de57e70c3cfb9f604d88241f7065ebf9fd9"
+  },
+  {
+    "id": "NotoSerif",
+    "file": "NotoSerif.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/notoserif/NotoSerif%5Bwdth,wght%5D.ttf",
+    "license": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/notoserif/OFL.txt",
+    "sha256": "4d8e6761424656867019081a1a01336f3cb086982682698714054fc33f782713",
+    "licenseSha256": "cee9892f9f0cc8fe882c9e9537ee6a89621d86ee7ceaf70b02e2b2b1c25c061a"
+  },
+  {
+    "id": "EBGaramond",
+    "file": "EBGaramond.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/ebgaramond/EBGaramond%5Bwght%5D.ttf",
+    "license": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/ebgaramond/OFL.txt",
+    "sha256": "ef9512f92f6d579e5dc75af59a5a4b1b8b47d2eda89e00b954d44520e5369027",
+    "licenseSha256": "0985066662eb755ed3683ae5482a81a9195b49ce3f7e165cc2388b3dbece7dd7"
+  },
+  {
+    "id": "LibreBaskerville",
+    "file": "LibreBaskerville.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/librebaskerville/LibreBaskerville%5Bwght%5D.ttf",
+    "license": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/librebaskerville/OFL.txt",
+    "sha256": "05a95421961341c5b2556285e8415df9db27dab4f4abe22b446b3c6a8b916c5d",
+    "licenseSha256": "3624eddd4c8f8a908130a417ae7cd089c9da69899c4e0ca1a5217d0a6fae16fd"
+  },
+  {
+    "id": "Roboto",
+    "file": "Roboto.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/roboto/Roboto%5Bwdth,wght%5D.ttf",
+    "license": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/roboto/OFL.txt",
+    "sha256": "d7598e12c5dbef095ff8272cfc55da0250bd07fbdecbac8a530b9b277872a134",
+    "licenseSha256": "061402327a96aadb0bfb694a960ed289ecd38d383e396243831ab81feb109c41"
+  },
+  {
+    "id": "SourceSans3",
+    "file": "SourceSans3.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/sourcesans3/SourceSans3%5Bwght%5D.ttf",
+    "license": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/sourcesans3/OFL.txt",
+    "sha256": "042fe2cc0b933e328410d7acbd0aa6a1873dca5aef81875f4bc214b08825c7b9",
+    "licenseSha256": "09746787287a289323b0ec3cff4d1a4a801331b82b7207c1e186f5d26619a392"
+  },
+  {
+    "id": "IBMPlexMono",
+    "file": "IBMPlexMono.ttf",
+    "url": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/ibmplexmono/IBMPlexMono-Regular.ttf",
+    "license": "https://raw.githubusercontent.com/google/fonts/7af0d90b4d532ffa4b041937b560c6df4e7b1e95/ofl/ibmplexmono/OFL.txt",
+    "sha256": "6a3412f058c7d8dfd9170c41e85ade48e5156ecb89356110ca57a0a27734af46",
+    "licenseSha256": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da"
+  },
+  {
+    "id": "SmileySans",
+    "file": "SmileySans.ttf",
+    "url": "https://github.com/atelier-anchor/smiley-sans/releases/download/v2.0.1/smiley-sans-v2.0.1.zip",
+    "member": "SmileySans-Oblique.ttf",
+    "license": "https://raw.githubusercontent.com/atelier-anchor/smiley-sans/cbf2ce4a27933855e400f693265ef890fb60f21d/LICENSE",
+    "sha256": "b447d7e781f08bc95c4c9f23ba71ed2b8ebb639aa7184485c71c4ca5afcd25c4",
+    "licenseSha256": "9401f4050f1b66c26b6ccdc8b0e14a3c1cc37aac122eda84386f25854a9bec72"
+  }
+]
