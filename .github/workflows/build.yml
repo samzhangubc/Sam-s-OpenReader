@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        api: [29, 36]
+        api: [36]
     runs-on: ubuntu-latest
     timeout-minutes: 45
     steps:
@@ -20,7 +20,7 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-36 build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
-      - run: bash gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug
+      - run: bash gradlew :app:testDebugUnitTest :app:assembleDebug :app:lintDebug :app:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
           name: OpenReader-device-test-build-api-${{ matrix.api }}
