@@ -1,6 +1,6 @@
 # OpenReader — Software Design Document
 
-Version: 0.5 • Date: 2026-11-16 • Status: proposed design, ready for implementation planning
+Version: 0.6 • Date: 2026-11-16 • Status: proposed design, ready for implementation planning
 
 ## 1. Purpose and assumptions
 
@@ -53,6 +53,7 @@ All rows are first-release requirements unless a qualification is explicitly sta
 | TTS-01 | Read using installed Samsung TTS. | Language/voice checks and a sample precede playback; missing support has an actionable error. |
 | TTS-02 | Include a speed dial and stop timer. | Rate changes, countdown, end-of-chapter stop, pause/resume, and stop behave as specified below. |
 | UI-01 | Set font, font size, text color, and background color. | TXT/reflowable EPUB updates preserve the reading position; fixed-layout limitations are visible. |
+| UI-02 | Offer four color variants per built-in palette and an editor for individual colors. | All presets work offline. Named personal styles persist across restarts and can be applied globally or per book. |
 | NAV-01 | Navigate chapters and return to the last reading location. | Contents, previous/next chapter, and resume use persistent content locations. |
 | NAV-02 | Swipe pages; tap left/right to go backward/forward; tap center to toggle bars. | Gestures do not conflict with text selection, links, PDF zoom, or system navigation. |
 | NAV-03 | Small footer shows chapter number, page in chapter, and book percentage. | Values follow the definitions in section 8 and update after layout/content changes. |
@@ -275,7 +276,7 @@ The reader owns one page turn at a time. A renderer exposes the current page, an
 
 ### 7.2 Appearance and accessibility
 
-TXT and reflowable EPUB have independent **Chinese typeface** and **English typeface** pickers. Each picker starts with the eight built-in families below. Imported fonts appear in a separate group. Show each face by name with a live mixed sample, e.g. “山雨・歸途 — Harbour 12 🌙”. Each picker accepts imported TTF/OTF and can reset independently. Apply the Chinese face to Han runs with Simplified/Traditional language-aware fallback and the English face to Latin runs. Keep combining marks with their base, resolve neutral punctuation from the surrounding run, and route emoji clusters through emoji fallback. Store both choices globally with independent per-book overrides. Other settings include size (proposed 12–48 sp), text/background colors, line spacing, margins, alignment, and day/night/sepia presets. Warn about poor contrast without preventing user choices. Invalid fonts fail safely. Use the versioned Unicode fallback/coverage contract in section 5.2, with script-appropriate glyph forms and emoji handling. Apply Chinese line-breaking/punctuation rules where supported and test mixed Latin/CJK wrapping without splitting grapheme clusters.
+TXT and reflowable EPUB have independent **Chinese typeface** and **English typeface** pickers. Each picker starts with the eight built-in families below. Imported fonts appear in a separate group. Show each face by name with a live mixed sample, e.g. “山雨・歸途 — Harbour 12 🌙”. Each picker accepts imported TTF/OTF and can reset independently. Apply the Chinese face to Han runs with Simplified/Traditional language-aware fallback and the English face to Latin runs. Keep combining marks with their base, resolve neutral punctuation from the surrounding run, and route emoji clusters through emoji fallback. Store both choices globally with independent per-book overrides. Other settings include size (proposed 12–48 sp), line spacing, margins, alignment, and the color styles in section 7.3. Warn about poor contrast without preventing user choices. Invalid fonts fail safely. Use the versioned Unicode fallback/coverage contract in section 5.2, with script-appropriate glyph forms and emoji handling. Apply Chinese line-breaking/punctuation rules where supported and test mixed Latin/CJK wrapping without splitting grapheme clusters.
 
 **Built-in font library.** The following families cover familiar book, academic, sans serif, handwritten and monospaced styles. The two columns are independent menus. Source Han Serif and Source Serif 4 are the initial selections. The list is an editorial selection for reading, with no implied usage ranking.
 
@@ -297,6 +298,30 @@ Keep a manifest of the source release, file checksum, family/style, region, copy
 Publisher-style override is explicit for EPUB and reversible. Fixed-layout EPUB/PDF keeps authored typography: explain why font controls are unavailable. Viewer background does not recolor an opaque PDF page; a separate night filter is a visual approximation and may alter images.
 
 Use at least 48 dp targets for controls, TalkBack labels, and scalable toolbar text. A compact footer must remain readable and user-adjustable. With TalkBack touch exploration enabled, provide standard accessible actions instead of relying on hidden tap zones. Re-layout on rotation, split screen, or folding without changing the content anchor.
+
+### 7.3 Color palettes and personal styles
+
+Open **Aa → Colors & styles** in the reader or **Settings → Colors & styles** from the library. Pick a family, then a variant. The gallery previews the same English/Chinese passage, footer, selected text and Listen button in each style. All presets ship offline. The app names identify visual inspirations for OpenReader’s own colors.
+
+The proposed starting style is Paper / Light. Every family ships in all four variants. The table gives the **link color** for each combination in sRGB hex. High Contrast Dark uses near-black paper (`#0B0D10`) and near-white ink (`#FAFAFA`). Dark uses charcoal paper (`#202327`) and soft white ink (`#E5E7E9`). Light uses warm white paper (`#FFFEFA`) and dark ink (`#202124`). Watercolor uses the pale wash in its cell as paper, the second color for links, and `#343837` for ink. Give its menus and highlights similarly muted tints. Use flat fills so text stays crisp at small sizes.
+
+| Family | High Contrast Dark | Dark | Light | Low Saturation (Watercolor): paper / link |
+| --- | --- | --- | --- | --- |
+| Claude · terracotta | `#FFCBAC` | `#F0AB88` | `#914526` | `#F5ECE6` / `#78574B` |
+| ChatGPT · neutral with teal | `#A2F5DC` | `#80D7B8` | `#14634F` | `#EAF2EE` / `#46665D` |
+| GitHub · slate and blue | `#B6DCFF` | `#88BAF5` | `#215DA3` | `#ECF0F5` / `#4E637D` |
+| Visual Studio · violet | `#E1C6FF` | `#C5A5E8` | `#70449A` | `#F1ECF5` / `#695578` |
+| Adobe Photoshop · graphite and cyan | `#A6EBFF` | `#79CCEF` | `#116384` | `#E8F1F4` / `#476873` |
+| Overleaf · leafy green | `#C0F4A6` | `#99CF88` | `#38682B` | `#EFF2E5` / `#536748` |
+| Spotify · emerald | `#A5F8B8` | `#70DA92` | `#176731` | `#E7F1E8` / `#49694F` |
+| Discord · periwinkle | `#D5D4FF` | `#B0B3FF` | `#504CA4` | `#EEEDF6` / `#605E83` |
+| Paper · graphite and sepia | `#F6E5C6` | `#D9C7A6` | `#665233` | `#F5EDDC` / `#70604B` |
+
+**Customize.** Each swatch edits one named role independently: page background, body text, footer text, link, menu background, menu text, primary button fill and label, focus indicator, divider, text selection fill and text, and TTS highlight fill and text. Offer a color picker, exact `#RRGGBB` entry, Undo and Reset this color. Preview edits immediately. Cancel restores the active style. Built-ins stay available in the gallery. **Save as my style** stores a named snapshot of the selected variant and all its colors under *My styles*. Example: start with Overleaf / Watercolor, change only the paper to cream, and save as *Evening garden*. The other Overleaf variants stay available with their original values.
+
+**Scope and reuse.** Apply globally to the library, menus and inherited reader styles, or override a single book and its reader controls. A user can reopen, edit, duplicate, rename or delete a personal style. Editing a shared style updates every place that references it. Show that scope before saving and offer **Save a copy** for independent edits. Deleting an active style restores inheritance for affected books and Paper / Light if it was the global default. Changing only colors repaints the current page without repagination, moving the locator or interrupting speech. In fixed-layout books, apply colors to reader controls, footer and the area around the page. The separate PDF night filter remains optional.
+
+**Contrast.** For shipped presets, require at least 4.5:1 for normal text against its actual background, including footer, selection and TTS highlight text. Require at least 7:1 for those pairs in High Contrast Dark and at least 3:1 for essential control boundaries and focus indicators. Check the rendered foreground/background pair for each role. In personal styles, show the measured ratio and flag the affected pair while allowing the user to keep their colors. Underline links and mark the active swatch with a check. [Text contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html), [enhanced contrast](https://www.w3.org/WAI/WCAG22/Understanding/contrast-enhanced.html), [non-text contrast](https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html).
 
 ## 8. Pagination, locations, and progress
 
@@ -437,7 +462,8 @@ Android import/export uses SAF (`ACTION_OPEN_DOCUMENT` / `ACTION_CREATE_DOCUMENT
 | DetectionProfile | UUID, version, rules, options |
 | ReadingState | Book/revision, visual locator, speech locator, updated time |
 | Bookmark | UUID, book/revision, locator/context, label |
-| AppearanceOverride | Book ID, independent Chinese/English font references, size/colors/spacing/margins, optional page-turn mode, inherited fields. A missing mode inherits the global choice. |
+| AppearanceOverride | Book ID, independent Chinese/English font references, size/spacing/margins, optional color style ID, optional page-turn mode, inherited fields. A missing mode inherits the global choice. |
+| ColorStyle | Stable ID, localized built-in family and variant IDs or personal display name, optional base preset ID, palette schema version, complete role-to-sRGB color map. Global preferences and book overrides reference the stable ID. |
 | EditBatch | Base/result revision, ordered rules, counts, offset-map path |
 | FontCoveragePack | ID/version, Unicode/emoji data version, script/range/sequence coverage, asset paths, licenses, verification status |
 
@@ -461,8 +487,10 @@ Export modes:
 
 1. Original book: exact original bytes for TXT/EPUB/PDF.
 2. Edited TXT: current text encoded UTF-8, labeled as edited; does not preserve chapters/settings in a plain TXT file.
-3. OpenReader book package (`.openreader.zip`): versioned manifest, originals, active text and its approved chapter map, chapter profiles/overrides, bookmarks, visual/speech locators, and per-book settings including the page-turn override. Optional full history is explicitly selected.
-4. Library backup: one package for selected/all books plus global settings. Include licensed user-font files only if the user chooses them; missing fonts restore to a fallback.
+3. OpenReader book package (`.openreader.zip`): versioned manifest, originals, active text and its approved chapter map, chapter profiles/overrides, bookmarks, visual/speech locators, and per-book settings including the page-turn override. Optional full history is explicitly selected. Include the effective color style with its role values in a book package so it can be reproduced after import. If an inherited style differs from the destination default, apply it as a book override.
+4. Library backup: one package for selected/all books plus global settings and all named personal styles. Include licensed user-font files only if the user chooses them; missing fonts restore to a fallback.
+
+On restore, reuse an identical style with the same ID. If its colors or name differ, import a separate style and remap the incoming references. Migrate legacy explicit page/text colors into a personal style, preserving their original scope.
 
 Restore validates schema version, hashes, file limits, paths, and relationships in staging, previews contents, and offers Skip duplicates / Import separate copies. Unknown future schema versions fail without modifying the library. Do not restore device-specific voice IDs blindly; reselect available voices. Export failure is reported as incomplete; do not claim a destination provider's partial file is a valid backup.
 
@@ -527,6 +555,8 @@ App-owned CPU/memory limits are release gates; combined vendor-dependent CPU/mem
 | Font/size/color changes, rotation, folding, split screen | Same content remains visible; correct page totals regenerate. |
 | Tap/swipe/long press/links, system edge-back, TalkBack, zoomed PDF | One intended action per gesture; controls remain accessible. |
 | Import from phone | Import opens the Android document picker. Cancel leaves the shelf intact. Selecting TXT, EPUB or PDF proceeds to the chosen ownership flow. |
+| Color catalog and contrast | On a clean offline install, enumerate all 36 family/variant combinations. Check each role pair against section 7.3, including the footer, menu, button, selection and TTS highlight. |
+| Personal styles | Change one swatch, cancel, then save a named copy. Verify other colors and the built-in preset, global vs book scope, rename/delete fallback, restart, and backup/import on a second installation. Check TXT, EPUB with publisher styles on/off, and PDF chrome while speech continues. |
 | Floating reader menu | Center tap reveals Contents, Aa and Listen from the bottom. Dismiss restores chapter/page/percentage at the same locator. |
 | Offline bundled font library | On a fresh install with network disabled and no imported fonts, verify eight choices in each picker. Resolve each selection to its packaged file in the native sample and a reflowable book, including CMU Serif. Verify SC/TC fallback on missing glyphs and restore saved family IDs after restart. |
 | Independent fonts | Change only the Chinese face, then only the English face, on the mixed sample in TXT and EPUB. The chosen run changes, emoji stays intact, and both settings survive reopen. |
