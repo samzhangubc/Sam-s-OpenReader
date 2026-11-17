@@ -120,4 +120,25 @@
     <string name="skip_duplicates">Skip duplicates</string>
     <string name="chapter_page">Chapter page</string>
     <string name="go">Go</string>
+    <string name="add_blocks">Build rule from blocks</string>
+    <string name="number_block">Read a number</string>
+    <string name="title_block">Optional title after separator</string>
+    <string name="end_block">End of line</string>
+    <string name="exclude_block">Exclude if line contains</string>
+    <string name="multiline">Use next short line as subtitle</string>
+    <string name="profile_name">Chapter profile name</string>
+    <string name="profiles">Saved chapter profiles</string>
+    <string name="source_here">Read from this page</string>
+    <string name="follow_speech">Follow spoken passage</string>
+    <string name="reset_color">Reset this color</string>
+    <string name="contrast">Contrast ratio</string>
+    <string name="navigation_zone">Side tap zone</string>
+    <string name="margins">Page margins</string>
+    <string name="spacing">Line spacing</string>
+    <string name="regex">Regular expression (one line, RE2)</string>
+    <string name="sensitive">Case sensitive</string>
+    <string name="whole_word">Whole words (Latin text)</string>
+    <string name="add_rule">Add to ordered batch</string>
+    <string name="changed_chapters">Changed headings</string>
+    <string name="preview_all">Review the whole book</string>
 </resources>

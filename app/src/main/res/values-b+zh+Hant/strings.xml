@@ -120,4 +120,25 @@
     <string name="skip_duplicates">略過重複書籍</string>
     <string name="chapter_page">章節內頁碼</string>
     <string name="go">前往</string>
+    <string name="add_blocks">組合規則區塊</string>
+    <string name="number_block">讀取數字</string>
+    <string name="title_block">分隔符後的選用標題</string>
+    <string name="end_block">行尾</string>
+    <string name="exclude_block">排除包含以下內容的行</string>
+    <string name="multiline">將下一短行用作副標題</string>
+    <string name="profile_name">章節規則名稱</string>
+    <string name="profiles">已存章節規則</string>
+    <string name="source_here">從本頁開始朗讀</string>
+    <string name="follow_speech">跟隨朗讀位置</string>
+    <string name="reset_color">重設此顏色</string>
+    <string name="contrast">對比度</string>
+    <string name="navigation_zone">兩側點按區域</string>
+    <string name="margins">頁面邊界</string>
+    <string name="spacing">行距</string>
+    <string name="regex">正規表示式（單行 RE2）</string>
+    <string name="sensitive">區分大小寫</string>
+    <string name="whole_word">完整單字（拉丁文字）</string>
+    <string name="add_rule">加入依序規則清單</string>
+    <string name="changed_chapters">變更的標題</string>
+    <string name="preview_all">預覽全書</string>
 </resources>

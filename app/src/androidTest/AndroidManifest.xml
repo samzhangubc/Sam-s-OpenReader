@@ -1,0 +1,5 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application><provider android:name="org.sam.openreader.FixtureProvider"
+        android:authorities="org.sam.openreader.test.fixtures" android:exported="true"
+        android:grantUriPermissions="true"/></application>
+</manifest>
