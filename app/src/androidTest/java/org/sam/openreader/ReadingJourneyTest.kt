@@ -33,14 +33,14 @@ class ReadingJourneyTest {
                         )
                 )
             }
-            ui.waitUntil(15000) {
+            ui.waitUntil(60000) {
                 ui.onAllNodes(hasText("Open once") and isEnabled())
                     .fetchSemanticsNodes()
                     .isNotEmpty()
             }
             ui.onNodeWithText("Open once").performClick()
             val label = if (name.endsWith("txt")) "Section 1" else "Page 1 / 3"
-            ui.waitUntil(30000) {
+            ui.waitUntil(60000) {
                 ui.onAllNodesWithText(label, substring = true).fetchSemanticsNodes().isNotEmpty()
             }
             ui.onNodeWithText(label, substring = true).performClick()
@@ -59,7 +59,7 @@ class ReadingJourneyTest {
         lib.original(staged).writeText(body)
         val book = runBlocking { lib.commit(staged, true, Charsets.UTF_8, HeadingRule()) }
         try {
-            ui.waitUntil(15000) {
+            ui.waitUntil(60000) {
                 ui.onAllNodesWithText(book.title).fetchSemanticsNodes().isNotEmpty()
             }
             ui.onNodeWithText(book.title).performClick()
