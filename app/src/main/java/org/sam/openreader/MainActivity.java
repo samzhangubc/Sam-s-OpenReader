@@ -245,8 +245,8 @@ public class MainActivity extends Activity {
         sheet.setContentView(actions);
         Window w = sheet.getWindow();
         w.setGravity(Gravity.BOTTOM);
-        w.setLayout(-1, -2);
         sheet.show();
+        w.setLayout(-1, -2);
     }
     private void chapters() {
         EditText prefix = new EditText(this);
@@ -257,9 +257,9 @@ public class MainActivity extends Activity {
             .setPositiveButton("Preview", (d,w) -> {
                 String p = prefix.getText().toString();
                 prefs.edit().putString("prefix", p).apply();
-                Pattern pattern = Pattern.compile("(?im)^\\s*" + Pattern.quote(p) +
+                Pattern pattern = Pattern.compile("(?im)^[ \\t]*" + Pattern.quote(p) + "[ \\t]*" +
                     "(?:[0-9０-９一二三四五六七八九十百千零〇两兩壹貳參肆伍陸柒捌玖拾佰仟]+|[IVXLCDM]+)" +
-                    (p.equals("第") ? "[章回节節]" : "") + "(?:[ \\t:：].{0,40})?$");
+                    (p.equals("第") ? "[章回节節]" : "") + "(?:[ \\t:：][^\\r\\n。！？.!?]{0,40})?$");
                 Matcher m = pattern.matcher(content);
                 List<String> names = new ArrayList<>(); List<Integer> positions = new ArrayList<>();
                 while (m.find() && names.size() < 3000) { names.add(m.group().trim()); positions.add(m.start()); }
@@ -323,6 +323,11 @@ public class MainActivity extends Activity {
         startActivityForResult(out, 3);
     }
     private void speech() {
+        if (!"com.samsung.SMT".equals(android.provider.Settings.Secure.getString(
+                getContentResolver(), "tts_default_synth"))) {
+            message("Set Samsung TTS as your preferred engine in phone Settings first");
+            return;
+        }
         new AlertDialog.Builder(this).setTitle("Samsung TTS")
             .setItems(new String[]{"Start / resume", "Pause", "← Previous paragraph", "Next paragraph →", "■ Quit TTS", "Speed", "Stop after 15 minutes"},
                 (d,n) -> {
@@ -331,11 +336,13 @@ public class MainActivity extends Activity {
                             getSharedPreferences("speech",0).edit().putFloat("rate", new float[]{.5f,1,1.5f,2,3}[b]).apply()).show();
                         return;
                     }
-                    if (n == 0) {
+                    boolean resume = getSharedPreferences("speech",0).getBoolean("session",false);
+                    if (n == 0 && !resume) {
                         try { write(new File(getFilesDir(), "speech.txt"), content.substring(offset)); }
                         catch(Exception ex) { failure(ex); return; }
                     }
                     Intent command = new Intent(this, SpeechService.class).setAction(new String[]{"play","pause","prev","next","quit","rate","timer"}[n]);
+                    if(n==0 && resume) command.setAction("resume");
                     if (n==0) startForegroundService(command); else startService(command);
                 }).show();
     }

@@ -25,6 +25,7 @@ public class SpeechService extends Service {
         NotificationManager notifications = getSystemService(NotificationManager.class);
         notifications.createNotificationChannel(new NotificationChannel("speech", "Reading aloud", NotificationManager.IMPORTANCE_LOW));
         startForeground(7, notification());
+        getSharedPreferences("speech",0).edit().putBoolean("session",true).apply();
         audio=getSystemService(AudioManager.class);
         focus=new AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
             .setAudioAttributes(new AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_MEDIA)
@@ -80,6 +81,7 @@ public class SpeechService extends Service {
             }
             if("next".equals(action)||"prev".equals(action)) {
                 engine.stop(); generation++;
+                if(!playing) return START_NOT_STICKY;
             } else if(audio.requestAudioFocus(focus)!=AudioManager.AUDIOFOCUS_REQUEST_GRANTED) return START_NOT_STICKY;
             playing=true;
             if(ready) speak();
@@ -117,6 +119,7 @@ public class SpeechService extends Service {
     }
     @Override public void onDestroy() {
         playing=false;handler.removeCallbacksAndMessages(null);
+        getSharedPreferences("speech",0).edit().putBoolean("session",false).apply();
         if(engine!=null) {engine.stop();engine.shutdown();}
         if(audio!=null)audio.abandonAudioFocusRequest(focus);
         try {if(input!=null)input.close();}catch(IOException ignored){}
