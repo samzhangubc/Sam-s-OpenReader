@@ -31,21 +31,24 @@ data class Destination(val label: String, val location: String)
 
 fun parseLocator(s: String): Locator? = runCatching { Locator.fromJSON(JSONObject(s)) }.getOrNull()
 
-class ReaderState(initial: String) {
+class ReaderState(initial: String, initialProgress: Double = 0.0) {
     var location by mutableStateOf(initial)
+    var positionReady by mutableStateOf(false)
     var section by mutableIntStateOf(1)
     var page by mutableIntStateOf(1)
     var total by mutableIntStateOf(0)
-    var progress by mutableDoubleStateOf(0.0)
+    var progress by mutableDoubleStateOf(initialProgress.coerceIn(0.0, 1.0))
     var chapterPageKnown by mutableStateOf(true)
     var destinations by mutableStateOf(emptyList<Destination>())
     var jump: (String) -> Unit = {}
+    var onManualTurn: (String) -> Unit = {}
     var flip: (Boolean) -> Unit = {}
     var search: suspend (String) -> List<Destination> = { emptyList() }
     var previous by mutableStateOf("")
 
     fun visit(dest: String) {
         previous = location
+        onManualTurn(dest)
         jump(dest)
     }
 }
@@ -68,7 +71,7 @@ private fun Look.preferences() =
 
 @Composable
 fun EpubView(
-    activity: FragmentActivity,
+    activity: MainActivity,
     pub: Publication,
     state: ReaderState,
     look: Look,
@@ -158,9 +161,14 @@ fun EpubView(
                 if (next) fragment.goForward(false) else fragment.goBackward(false)
             }
             h.restore = { departure?.let { fragment.go(it, false) } }
+            h.allowTurn = { !activity.selectingText }
+            h.onTurnAccepted = {
+                state.onManualTurn(fragment.currentLocator.value.toJSON().toString())
+            }
             fragment.addInputListener(
                 object : InputListener {
                     override fun onTap(event: TapEvent): Boolean {
+                        if (activity.selectingText) return true
                         when {
                             event.point.x < h.width * zone -> h.turn(false)
                             event.point.x > h.width * (1 - zone) -> h.turn(true)
@@ -217,7 +225,12 @@ fun EpubView(
         }
     }
     LaunchedEffect(nav, look) { nav?.submitPreferences(look.preferences()) }
-    LaunchedEffect(nav, loaded, look.colors) {
+    LaunchedEffect(nav, loaded, look.colors, look.publisher) {
+        val chapterTitles =
+            if (look.publisher) ""
+            else
+                "h1,h2,h3{font-size:1.35em!important;font-weight:600!important;" +
+                    "margin-bottom:.5em!important;break-after:avoid-page;page-break-after:avoid}"
         val css =
             "a { color:" +
                 look.colors[3] +
@@ -227,7 +240,7 @@ fun EpubView(
                 look.colors[11] +
                 "} :focus-visible {outline:2px solid " +
                 look.colors[8] +
-                "}"
+                "}" + chapterTitles
         nav?.evaluateJavascript(
             "(()=>{let s=document.getElementById('openreader-user-colors');if(!s){s=document.createElement('style');s.id='openreader-user-colors';document.head.append(s)}s.textContent=" +
                 JSONObject.quote(css) +
@@ -327,6 +340,7 @@ fun EpubView(
             )
                 state.progress = 1.0
             state.location = json.toString()
+            state.positionReady = true
         }
     }
 }
@@ -450,6 +464,7 @@ fun PdfView(pdf: PdfBook, state: ReaderState, look: Look, modifier: Modifier, to
                     moved
                 }
                 h.restore = { page = origin }
+                h.onTurnAccepted = { state.onManualTurn(page.toString()) }
                 h.settled = { state.location = page.toString() }
                 state.flip = h::turn
                 state.jump = { s -> s.toIntOrNull()?.let { page = it.coerceIn(0, pdf.count - 1) } }
@@ -494,5 +509,6 @@ fun PdfView(pdf: PdfBook, state: ReaderState, look: Look, modifier: Modifier, to
         state.total = pdf.count
         state.progress = (page + 1.0) / pdf.count
         if (host?.pending != true) state.location = page.toString()
+        state.positionReady = true
     }
 }

@@ -10,7 +10,9 @@ import android.provider.Settings
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import androidx.core.content.ContextCompat
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import kotlinx.coroutines.*
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 
 const val SAMSUNG = "com.samsung.SMT"
@@ -24,11 +26,26 @@ data class Listening(
     val deadline: Long = 0,
     val problem: Int = 0,
     val locator: String = "",
+    val chapterTimer: Boolean = false,
+    val voiceReady: Boolean = false,
+    val utteranceStarted: Boolean = false,
 )
 
 class SpeechService : Service() {
     companion object {
         val status = MutableStateFlow(Listening())
+
+        fun pauseForManualNavigation(ctx: Context, id: String, location: String, progress: Double) {
+            if (status.value.book == id) {
+                ctx.startService(
+                    Intent(ctx, SpeechService::class.java)
+                        .setAction("manual")
+                        .putExtra("id", id)
+                        .putExtra("location", location)
+                        .putExtra("progress", progress.toFloat()),
+                )
+            }
+        }
 
         fun quit(ctx: Context, id: String) {
             if (status.value.book == id) ctx.stopService(Intent(ctx, SpeechService::class.java))
@@ -49,6 +66,7 @@ class SpeechService : Service() {
     private var generation = 0
     private var playing = false
     private var ready = false
+    private var utteranceStarted = false
     private var activeId = ""
     private var rate = 1f
     private var voice = ""
@@ -64,9 +82,12 @@ class SpeechService : Service() {
     private val deadline = Runnable { end() }
     private val release = Runnable {
         if (!playing) {
+            startLoc = reading?.location ?: startLoc
             engine?.shutdown()
             engine = null
             ready = false
+            disposeSource()
+            update()
         }
     }
     private val noisy =
@@ -172,7 +193,17 @@ class SpeechService : Service() {
     }
 
     private fun update() {
-        status.value = Listening(activeId, playing, until, error, reading?.location.orEmpty())
+        status.value =
+            Listening(
+                activeId,
+                playing,
+                until,
+                error,
+                reading?.location.orEmpty(),
+                stopChapter,
+                ready,
+                utteranceStarted,
+            )
         media.setPlaybackState(
             PlaybackState.Builder()
                 .setActions(
@@ -198,7 +229,10 @@ class SpeechService : Service() {
             "open" -> {
                 startForeground(31, notification())
                 val id = i.getStringExtra("id") ?: return START_NOT_STICKY
-                val fresh = activeId != id || source == null || i.getBooleanExtra("fromHere", false)
+                val fresh =
+                    activeId != id ||
+                        (source == null && load?.isActive != true) ||
+                        i.getBooleanExtra("fromHere", false)
                 rate = i.getFloatExtra("rate", 1f)
                 voice = i.getStringExtra("voice").orEmpty()
                 if (fresh) {
@@ -209,33 +243,12 @@ class SpeechService : Service() {
                     b = null
                     reading = null
                     error = 0
+                    utteranceStarted = false
                     engine?.shutdown()
                     engine = null
                     ready = false
                     startLoc = i.getStringExtra("location").orEmpty()
-                    val gen = generation
-                    load =
-                        scope.launch {
-                            try {
-                                val book = lib.shelf.book(id) ?: return@launch end()
-                                val src =
-                                    withContext(io) {
-                                        lib.speechSource(
-                                            book,
-                                            startLoc.ifBlank { book.spoken.ifBlank { book.visual } },
-                                        )
-                                    }
-                                if (gen != generation) {
-                                    withContext(io) { src.close() }
-                                    return@launch
-                                }
-                                b = book
-                                source = src
-                                play()
-                            } catch (e: Exception) {
-                                if (e !is CancellationException) fail(R.string.unavailable)
-                            }
-                        }
+                    loadSource(startLoc)
                 } else play()
                 if (fresh) timer(i.getIntExtra("minutes", 0))
                 update()
@@ -244,6 +257,7 @@ class SpeechService : Service() {
             "pause" -> pause()
             "previous" -> seek(-1)
             "next" -> seek(1)
+            "manual" -> manualNavigation(i)
             "quit" -> end()
             "rate" -> {
                 rate = i.getFloatExtra("rate", 1f)
@@ -297,7 +311,15 @@ class SpeechService : Service() {
                         ready = true
                         t.setOnUtteranceProgressListener(
                             object : UtteranceProgressListener() {
-                                override fun onStart(id: String) {}
+                                override fun onStart(id: String) {
+                                    handler.post {
+                                        if (id == generation.toString()) {
+                                            utteranceStarted = true
+                                            status.value =
+                                                status.value.copy(utteranceStarted = true)
+                                        }
+                                    }
+                                }
 
                                 override fun onDone(id: String) {
                                     handler.post {
@@ -313,6 +335,7 @@ class SpeechService : Service() {
                                 }
                             }
                         )
+                        update()
                         if (playing) speakCurrent()
                     }
                 },
@@ -321,7 +344,11 @@ class SpeechService : Service() {
     }
 
     private fun play() {
-        if (activeId.isEmpty() || source == null) return
+        if (activeId.isEmpty()) return
+        if (source == null) {
+            if (load?.isActive != true) loadSource(startLoc)
+            return
+        }
         if (until != 0L && SystemClock.elapsedRealtime() >= until) {
             end()
             return
@@ -357,6 +384,10 @@ class SpeechService : Service() {
         playing = false
         invalidate()
         checkpoint()
+        handler.removeCallbacks(deadline)
+        until = 0L
+        stopChapter = false
+        firstChapter = null
         stopSelf()
     }
 
@@ -368,7 +399,64 @@ class SpeechService : Service() {
     private fun seek(dir: Int) {
         if (source == null) return
         invalidate()
+        clearChapterTimerForSeek()
         fetch(dir, true)
+    }
+
+    private fun clearChapterTimerForSeek() {
+        if (!stopChapter) return
+        stopChapter = false
+        firstChapter = null
+        until = 0L
+        handler.removeCallbacks(deadline)
+    }
+
+    private fun manualNavigation(i: Intent) {
+        val id = i.getStringExtra("id")?.takeIf { it == activeId } ?: return
+        val location = i.getStringExtra("location")?.takeIf { it.isNotBlank() } ?: return
+        invalidate()
+        playing = false
+        audio.abandonAudioFocusRequest(focus)
+        startLoc = location
+        reading = null
+        disposeSource()
+        clearChapterTimerForSeek()
+        val progress = i.getFloatExtra("progress", -1f).toDouble().takeIf { it in 0.0..1.0 }
+        (application as ReaderApp).scope.launch {
+            val book = b?.takeIf { it.id == id } ?: lib.shelf.book(id) ?: return@launch
+            b = book
+            lib.shelf.speech(book.id, book.revision, location, progress)
+        }
+        handler.removeCallbacks(release)
+        handler.postDelayed(release, 60000)
+        update()
+    }
+
+    private fun loadSource(location: String) {
+        if (load?.isActive == true || activeId.isEmpty()) return
+        val id = activeId
+        val gen = generation
+        load = scope.launch {
+            try {
+                val book = lib.shelf.book(id) ?: return@launch end()
+                val src =
+                    withContext(io) {
+                        lib.speechSource(
+                            book,
+                            location.ifBlank { book.spoken.ifBlank { book.visual } },
+                        )
+                    }
+                if (gen != generation) {
+                    withContext(io) { src.close() }
+                    return@launch
+                }
+                b = book
+                source = src
+                play()
+            } catch (e: Exception) {
+                if (e !is CancellationException) fail(R.string.unavailable)
+            }
+        }
     }
 
     private fun fetch(dir: Int, para: Boolean) {
@@ -417,8 +505,14 @@ class SpeechService : Service() {
     private fun checkpoint() {
         val book = b ?: return
         val loc = reading?.location ?: return
+        val spokenProgress = reading?.progress?.coerceIn(0.0, 1.0)
         lastSave = SystemClock.elapsedRealtime()
-        (application as ReaderApp).scope.launch { lib.shelf.speech(book.id, book.revision, loc) }
+        (application as ReaderApp).scope.launch {
+            val follow =
+                runCatching { settings.data.first()[booleanPreferencesKey("follow")] ?: true }
+                    .getOrDefault(true)
+            lib.shelf.speech(book.id, book.revision, loc, if (follow) spokenProgress else null)
+        }
     }
 
     private fun disposeSource() {

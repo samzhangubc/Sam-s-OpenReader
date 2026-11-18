@@ -47,7 +47,7 @@ data class Book(
     val author: String = "",
     val imported: Long = System.currentTimeMillis(),
     @ColumnInfo(defaultValue = "0") val removed: Long = 0,
-    @ColumnInfo(defaultValue = "0") val progress: Double = 0.0,
+    @ColumnInfo(defaultValue = "-1") val progress: Double = 0.0,
 )
 
 @Entity(primaryKeys = ["bookId", "location"])
@@ -65,8 +65,11 @@ interface Shelf {
 
     @Query("UPDATE Book SET removed=:at WHERE id=:id") suspend fun trash(id: String, at: Long)
 
-    @Query("SELECT * FROM Book WHERE (permanent=0 OR removed>0) AND imported<:before")
+    @Query("SELECT * FROM Book WHERE (permanent=0 OR (removed>0 AND removed+6500<=:before)) AND imported<:before")
     suspend fun abandoned(before: Long): List<Book>
+
+    @Query("SELECT * FROM Book WHERE permanent=1 AND removed>0 AND removed+6500>:now ORDER BY removed DESC")
+    suspend fun pendingRemoval(now: Long): List<Book>
 
     @Insert suspend fun add(book: Book)
 
@@ -81,8 +84,10 @@ interface Shelf {
         time: Long = System.currentTimeMillis(),
     )
 
-    @Query("UPDATE Book SET spoken=:locator WHERE id=:id AND revision=:revision")
-    suspend fun speech(id: String, revision: String, locator: String)
+    @Query(
+        "UPDATE Book SET spoken=:locator, progress=COALESCE(:progress, progress) WHERE id=:id AND revision=:revision"
+    )
+    suspend fun speech(id: String, revision: String, locator: String, progress: Double?)
 
     @Query("UPDATE Book SET title=:title WHERE id=:id")
     suspend fun rename(id: String, title: String)
@@ -90,9 +95,9 @@ interface Shelf {
     @Query("UPDATE Book SET style=:style WHERE id=:id") suspend fun style(id: String, style: String)
 
     @Query(
-        "UPDATE Book SET revision=:next, visual=:location, spoken='' WHERE id=:id AND revision=:base"
+        "UPDATE Book SET revision=:next, visual=:location, spoken='', progress=:progress WHERE id=:id AND revision=:base"
     )
-    suspend fun revise(id: String, base: String, next: String, location: String): Int
+    suspend fun revise(id: String, base: String, next: String, location: String, progress: Double): Int
 
     @Insert(onConflict = OnConflictStrategy.REPLACE) suspend fun mark(mark: Bookmark)
 
@@ -110,7 +115,7 @@ interface Shelf {
     @Query("SELECT id FROM Book WHERE permanent=0") suspend fun temporary(): List<String>
 }
 
-@Database(entities = [Book::class, Bookmark::class], version = 3, exportSchema = false)
+@Database(entities = [Book::class, Bookmark::class], version = 4, exportSchema = false)
 abstract class LibraryDb : RoomDatabase() {
     abstract fun shelf(): Shelf
 }
@@ -138,9 +143,21 @@ class Library(val context: Context) {
                 },
                 object : androidx.room.migration.Migration(2, 3) {
                     override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
-                        db.execSQL("ALTER TABLE Book ADD COLUMN progress REAL NOT NULL DEFAULT 0")
+                        db.execSQL("ALTER TABLE Book ADD COLUMN progress REAL NOT NULL DEFAULT -1")
                     }
-                }
+                },
+                object : androidx.room.migration.Migration(3, 4) {
+                    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        db.execSQL(
+                            "CREATE TABLE Book_new (id TEXT NOT NULL, title TEXT NOT NULL, format TEXT NOT NULL, hash TEXT NOT NULL, permanent INTEGER NOT NULL, revision TEXT NOT NULL, visual TEXT NOT NULL, spoken TEXT NOT NULL, opened INTEGER NOT NULL, style TEXT NOT NULL, author TEXT NOT NULL, imported INTEGER NOT NULL, removed INTEGER NOT NULL DEFAULT 0, progress REAL NOT NULL DEFAULT -1, PRIMARY KEY(id))"
+                        )
+                        db.execSQL(
+                            "INSERT INTO Book_new (id, title, format, hash, permanent, revision, visual, spoken, opened, style, author, imported, removed, progress) SELECT id, title, format, hash, permanent, revision, visual, spoken, opened, style, author, imported, removed, CASE WHEN progress=0 AND visual<>'' THEN -1 ELSE progress END FROM Book"
+                        )
+                        db.execSQL("DROP TABLE Book")
+                        db.execSQL("ALTER TABLE Book_new RENAME TO Book")
+                    }
+                },
             )
             .build()
     val shelf = db.shelf()

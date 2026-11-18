@@ -64,28 +64,44 @@ fun ReaderScreen(
     var pub by remember { mutableStateOf<Publication?>(null) }
     var pdf by remember { mutableStateOf<PdfBook?>(null) }
     var failed by remember { mutableStateOf(false) }
+    var rebuildingIndex by remember(b.id, b.revision) { mutableStateOf(false) }
+    val latestPublication = rememberUpdatedState(pub)
+    val latestPdf = rememberUpdatedState(pdf)
     LaunchedEffect(b.id, b.revision) {
         try {
+            pub = null
+            pdf = null
             if (b.format == "pdf") pdf = withContext(Dispatchers.IO) { PdfBook(lib.original(b)) }
-            else pub = withContext(Dispatchers.IO) { lib.publication(lib.renderFile(b)) }
+            else {
+                pub = withContext(Dispatchers.IO) { lib.publication(lib.renderFile(b)) }
+                if (b.format == "txt") {
+                    rebuildingIndex = true
+                    try {
+                        withContext(Dispatchers.IO) { TextFiles.ensureSegmentIndex(lib.revision(b)) }
+                    } finally {
+                        rebuildingIndex = false
+                    }
+                }
+            }
         } catch (e: Exception) {
             if (e is CancellationException) throw e
             failed = true
             error()
         }
     }
-    DisposableEffect(Unit) {
+    DisposableEffect(b.id, b.revision) {
         onDispose {
-            pub?.close()
-            pdf?.close()
+            latestPublication.value?.close()
+            latestPdf.value?.close()
             val loc = state.location
-            activity.lifecycleScope.launch {
-                lib.shelf.position(b.id, b.revision, loc, state.progress.coerceIn(0.0, 1.0))
-            }
+            if (state.positionReady && loc.isNotEmpty())
+                activity.lifecycleScope.launch {
+                    lib.shelf.position(b.id, b.revision, loc, state.progress.coerceIn(0.0, 1.0))
+                }
         }
     }
-    LaunchedEffect(state.location) {
-        if (state.location.isNotEmpty()) {
+    LaunchedEffect(state.location, state.positionReady) {
+        if (state.positionReady && state.location.isNotEmpty()) {
             delay(250)
             lib.shelf.position(
                 b.id,
@@ -96,6 +112,11 @@ fun ReaderScreen(
         }
     }
     val toggle = { show(if (panel == null) Panel.MENU else null) }
+    SideEffect {
+        state.onManualTurn = { location ->
+            SpeechService.pauseForManualNavigation(activity, b.id, location, state.progress)
+        }
+    }
     val prefs by activity.settings.data.collectAsState(emptyPreferences())
     val speech by SpeechService.status.collectAsState()
     LaunchedEffect(speech.locator, speech.book, prefs[booleanPreferencesKey("follow")]) {
@@ -103,7 +124,7 @@ fun ReaderScreen(
             speech.book == b.id &&
                 speech.playing &&
                 speech.locator.isNotBlank() &&
-                prefs[booleanPreferencesKey("follow")] == true
+                (prefs[booleanPreferencesKey("follow")] ?: true)
         ) {
             val dest =
                 withContext(Dispatchers.IO) {
@@ -146,10 +167,7 @@ fun ReaderScreen(
                             stringResource(R.string.page) +
                             " " +
                             (if (state.chapterPageKnown) state.page.toString() else "…") +
-                            (if (state.total > 0) " / " + state.total else " / …") +
-                            (if (look.percent)
-                                "  ·  " + (state.progress * 100).toInt().coerceIn(0, 100) + "%"
-                            else ""),
+                            (if (state.total > 0) " / " + state.total else " / …"),
                         color = look.color(2),
                         style = MaterialTheme.typography.labelMedium,
                         modifier = Modifier.clickable { show(Panel.MENU) },
@@ -162,6 +180,22 @@ fun ReaderScreen(
                     Action(R.string.back, leave)
                     Text(b.title, Modifier.weight(1f), maxLines = 1)
                     Action(R.string.more) { show(Panel.ACTIONS) }
+                }
+            }
+        }
+        if (rebuildingIndex) {
+            Surface(
+                Modifier.align(Alignment.TopCenter).padding(top = 12.dp),
+                shadowElevation = 4.dp,
+                shape = androidx.compose.foundation.shape.RoundedCornerShape(12.dp),
+            ) {
+                Row(
+                    Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Text(stringResource(R.string.rebuilding_index))
                 }
             }
         }
@@ -351,7 +385,7 @@ fun ContentsPanel(lib: Library, b: Book, state: ReaderState, close: () -> Unit) 
                 Action(R.string.return_to) {
                     val prev = state.previous
                     state.previous = ""
-                    state.jump(prev)
+                    state.visit(prev)
                     close()
                 }
         }

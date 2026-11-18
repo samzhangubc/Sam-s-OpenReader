@@ -3,6 +3,7 @@ package org.sam.openreader
 import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.view.ActionMode
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -40,6 +41,18 @@ val stylesKey = stringPreferencesKey("styles")
 class MainActivity : AppCompatActivity() {
     private var external by mutableStateOf<Uri?>(null)
     private var active by mutableStateOf(false)
+    var selectingText by mutableStateOf(false)
+        private set
+
+    override fun onActionModeStarted(mode: ActionMode) {
+        super.onActionModeStarted(mode)
+        selectingText = true
+    }
+
+    override fun onActionModeFinished(mode: ActionMode) {
+        selectingText = false
+        super.onActionModeFinished(mode)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         supportFragmentManager.fragmentFactory = EpubNavigatorFragment.createDummyFactory()
@@ -62,7 +75,7 @@ class MainActivity : AppCompatActivity() {
         super.onStop()
     }
 
-    override fun onNewIntent(intent: Intent) {
+    public override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         receive(intent)
     }
@@ -93,6 +106,16 @@ enum class Panel {
 }
 
 @Composable
+private fun shelfProgress(book: Book): String =
+    if (!book.progress.isFinite() || book.progress < 0.0) {
+        if (book.format == "pdf")
+            stringResource(R.string.saved_page, (book.visual.toIntOrNull() ?: 0) + 1)
+        else stringResource(R.string.saved_position)
+    } else {
+        ((book.progress.coerceIn(0.0, 1.0) * 100).toInt()).toString() + "%"
+    }
+
+@Composable
 fun OpenReader(
     activity: MainActivity,
     lib: Library,
@@ -119,14 +142,29 @@ fun OpenReader(
     var job by remember { mutableStateOf<Job?>(null) }
     var restore by remember { mutableStateOf<BackupPreview?>(null) }
     var removed by remember { mutableStateOf<Book?>(null) }
+    LaunchedEffect(Unit) {
+        removed = lib.shelf.pendingRemoval(System.currentTimeMillis()).firstOrNull()
+    }
     LaunchedEffect(removed) {
         removed?.let { item ->
-            delay(6500)
-            if (lib.shelf.book(item.id)?.removed != 0L) lib.remove(item)
-            removed = null
+            val removedAt = lib.shelf.book(item.id)?.removed ?: 0L
+            if (removedAt > 0L) {
+                delay((removedAt + 6500L - System.currentTimeMillis()).coerceAtLeast(0L))
+                val latest = lib.shelf.book(item.id)
+                if (latest?.removed == removedAt) lib.remove(latest)
+            }
+            if (removed?.id == item.id) removed = null
         }
     }
-    val state = key(book?.id, book?.revision) { remember { ReaderState(book?.visual ?: "") } }
+    val state =
+        key(book?.id, book?.revision) {
+            remember {
+                ReaderState(
+                    book?.visual.orEmpty(),
+                    book?.progress?.takeIf { it.isFinite() && it >= 0.0 } ?: 0.0,
+                )
+            }
+        }
     var operation by remember { mutableStateOf<suspend (Uri) -> Unit>({}) }
     val export =
         rememberLauncherForActivityResult(
@@ -201,12 +239,13 @@ fun OpenReader(
         selected = null
         if (b != null)
             scope.launch {
-                lib.shelf.position(
-                    b.id,
-                    b.revision,
-                    state.location,
-                    state.progress.coerceIn(0.0, 1.0),
-                )
+                if (state.positionReady && state.location.isNotEmpty())
+                    lib.shelf.position(
+                        b.id,
+                        b.revision,
+                        state.location,
+                        state.progress.coerceIn(0.0, 1.0),
+                    )
                 if (!b.permanent && SpeechService.status.value.book != b.id) lib.remove(b)
             }
     }
@@ -300,7 +339,14 @@ fun OpenReader(
                                 Modifier.padding(vertical = 20.dp),
                             )
                         else {
-                            Action(R.string.continue_reading) { open(shelf.first()) }
+                            val current = shelf.first()
+                            ListItem(
+                                headlineContent = { Text(current.title) },
+                                supportingContent = {
+                                    Text(stringResource(R.string.continue_reading) + " · " + shelfProgress(current))
+                                },
+                                modifier = Modifier.clickable { open(current) },
+                            )
                             OutlinedTextField(
                                 query,
                                 { query = it },
@@ -330,9 +376,7 @@ fun OpenReader(
                                                 listOf(
                                                         item.format.uppercase(),
                                                         item.author,
-                                                        (item.progress.coerceIn(0.0, 1.0) * 100)
-                                                            .toInt()
-                                                            .toString() + "%",
+                                                        shelfProgress(item),
                                                     )
                                                     .filter { it.isNotBlank() }
                                                     .joinToString(" · ")

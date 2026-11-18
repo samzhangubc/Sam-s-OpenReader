@@ -8,6 +8,8 @@
     <string name="author">Author</string>
     <string name="import_date">Date added</string>
     <string name="continue_reading">Continue reading</string>
+    <string name="saved_position">Saved reading position</string>
+    <string name="saved_page">Page %1$d</string>
     <string name="settings">Settings</string>
     <string name="language">Interface language</string>
     <string name="follow_system">Follow system</string>
@@ -40,6 +42,7 @@
     <string name="export_original">Export original</string>
     <string name="export_edited">Export edited TXT</string>
     <string name="loading">Working…</string>
+    <string name="rebuilding_index">Preparing the TXT reading index…</string>
     <string name="invalid">Could not open or process this file. Check the encoding, file format, available space and access permission.</string>
     <string name="bookmarks">Bookmarks</string>
     <string name="bookmark">Bookmark this page</string>

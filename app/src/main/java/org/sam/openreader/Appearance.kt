@@ -383,7 +383,6 @@ fun Appearance(
         }
         Text(stringResource(R.string.navigation_zone) + " · " + look.zone + "%")
         Slider(look.zone.toFloat(), { look = look.copy(zone = it.toInt()) }, valueRange = 15f..40f)
-        Toggle(R.string.show_percent, look.percent) { look = look.copy(percent = it) }
         if (book) {
             Toggle(R.string.this_book, local) { local = it }
             Action(R.string.inherit, inherit)

@@ -1,11 +1,18 @@
 package org.sam.openreader
 
-import android.content.Intent
 import android.net.Uri
+import android.content.Intent
+import android.os.SystemClock
+import android.speech.tts.TextToSpeech
+import android.view.MotionEvent
+import android.view.View
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.core.content.ContextCompat
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import java.io.File
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.runBlocking
 import org.junit.*
 import org.junit.Assert.*
@@ -16,36 +23,130 @@ class ReadingJourneyTest {
     @get:Rule val ui = createAndroidComposeRule<MainActivity>()
 
     @Test
-    fun viewAndShareOpenPrivateSnapshots() {
-        // Deliver the public Activity intents using a granted content URI from a document provider.
-        for (name in listOf("notes.txt", "fixture.pdf")) {
-            val uri = Uri.parse("content://org.sam.openreader.test.fixtures/" + name)
-            val type = if (name.endsWith("txt")) "text/plain" else "application/pdf"
-            val intent =
-                if (type == "text/plain") Intent(Intent.ACTION_VIEW).setDataAndType(uri, type)
-                else Intent(Intent.ACTION_SEND).setType(type).putExtra(Intent.EXTRA_STREAM, uri)
-            ui.runOnUiThread {
-                ui.activity.startActivity(
-                    intent
-                        .setClass(ui.activity, MainActivity::class.java)
-                        .addFlags(
-                            Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
+    fun rapidTurnAfterSwipePreservesBothPageRequests() {
+        ui.runOnUiThread {
+            var page = 5
+            var accepted = 0
+            val turn = PageTurn(ui.activity).apply {
+                surface.isClickable = true
+                onTurnAccepted = { accepted++ }
+                advance = { next ->
+                    page += if (next) 1 else -1
+                    true
+                }
+                measure(
+                    View.MeasureSpec.makeMeasureSpec(400, View.MeasureSpec.EXACTLY),
+                    View.MeasureSpec.makeMeasureSpec(800, View.MeasureSpec.EXACTLY),
                 )
+                layout(0, 0, 400, 800)
             }
-            ui.waitUntil(60000) {
-                ui.onAllNodes(hasText("Open once") and isEnabled())
-                    .fetchSemanticsNodes()
-                    .isNotEmpty()
+            val down = SystemClock.uptimeMillis()
+            fun send(action: Int, x: Float, after: Long) {
+                val event =
+                    MotionEvent.obtain(down, down + after, action, x, 200f, 0)
+                try {
+                    turn.dispatchTouchEvent(event)
+                } finally {
+                    event.recycle()
+                }
             }
-            ui.onNodeWithText("Open once").performClick()
-            val label = if (name.endsWith("txt")) "Section 1" else "Page 1 / 3"
-            ui.waitUntil(60000) {
-                ui.onAllNodesWithText(label, substring = true).fetchSemanticsNodes().isNotEmpty()
+            send(MotionEvent.ACTION_DOWN, 320f, 0)
+            send(MotionEvent.ACTION_MOVE, 120f, 40)
+            send(MotionEvent.ACTION_UP, 120f, 60)
+            assertEquals("first swipe reaches page 6", 6, page)
+            accepted = 0
+            turn.turn(true)
+            assertEquals("fresh command reaches page 7", 7, page)
+            assertEquals("first immediate turn notifies playback", 1, accepted)
+            turn.turn(false)
+            assertEquals("second immediate turn reaches page 6", 6, page)
+            assertEquals("each immediate turn notifies playback", 2, accepted)
+            assertFalse(turn.pending)
+        }
+    }
+
+    @Test
+    fun samsungOfflineVoiceStartsPausesAndStops() {
+        assertTrue("Samsung TTS must be the device default", samsungDefault(ui.activity))
+        val initialized = CountDownLatch(1)
+        var probe: TextToSpeech? = null
+        ui.runOnUiThread {
+            probe = TextToSpeech(ui.activity, { initialized.countDown() }, SAMSUNG)
+        }
+        assertTrue("Samsung TTS initialization timed out", initialized.await(20, TimeUnit.SECONDS))
+        val voice =
+            probe?.voices.orEmpty().firstOrNull {
+                !it.isNetworkConnectionRequired &&
+                    TextToSpeech.Engine.KEY_FEATURE_NOT_INSTALLED !in it.features.orEmpty()
             }
-            ui.onNodeWithText(label, substring = true).performClick()
-            ui.onNodeWithText("Back").performClick()
-            ui.onNodeWithText("Import book").assertExists()
+        assertNotNull("An installed Samsung offline voice is required", voice)
+
+        val lib = (ui.activity.application as ReaderApp).library
+        val book = Book(uid(), "TTS smoke", "txt", uid(), true)
+        lib.dir(book.id).mkdirs()
+        lib.original(book).writeText(
+            "Chapter 1\n" + "A quiet harbour at the edge of the sea. 海風拂過書頁。 ".repeat(30)
+        )
+        val committed = runBlocking { lib.commit(book, true, Charsets.UTF_8, HeadingRule()) }
+        try {
+            val intent =
+                Intent(ui.activity, SpeechService::class.java)
+                    .setAction("open")
+                    .putExtra("id", committed.id)
+                    .putExtra("location", "")
+                    .putExtra("rate", 1f)
+                    .putExtra("voice", requireNotNull(voice).name)
+                    .putExtra("minutes", 0)
+                    .putExtra("fromHere", true)
+            ContextCompat.startForegroundService(ui.activity, intent)
+            ui.waitUntil(30000) {
+                SpeechService.status.value.let {
+                    it.book == committed.id && it.voiceReady && it.utteranceStarted
+                }
+            }
+            assertTrue("Samsung voice should begin speaking", SpeechService.status.value.playing)
+            ui.activity.startService(Intent(ui.activity, SpeechService::class.java).setAction("pause"))
+            ui.waitUntil(10000) {
+                SpeechService.status.value.book == committed.id && !SpeechService.status.value.playing
+            }
+            ui.activity.startService(Intent(ui.activity, SpeechService::class.java).setAction("quit"))
+            ui.waitUntil(10000) { SpeechService.status.value.book.isEmpty() }
+        } finally {
+            probe?.shutdown()
+            SpeechService.quit(ui.activity, committed.id)
+            runBlocking { lib.remove(committed) }
+        }
+    }
+
+    @Test
+    fun externalTxtImportKeepsPrivateSnapshot() = importExternalOnce("notes.txt")
+
+    @Test
+    fun externalPdfImportKeepsPrivateSnapshot() = importExternalOnce("fixture.pdf")
+
+    private fun importExternalOnce(name: String) {
+        val lib = (ui.activity.application as ReaderApp).library
+        val uri = Uri.parse("content://org.sam.openreader.test.fixtures/" + name)
+        val staged = runBlocking { lib.stage(uri) }
+        var imported: Book? = null
+        try {
+            assertEquals("original." + staged.format, lib.original(staged).name)
+            if (staged.format == "txt") {
+                assertEquals(
+                    "Chapter 1\nThe first harbour.\n\n第十二章 山雨\n第二段。🌊",
+                    lib.original(staged).readText(),
+                )
+            } else {
+                assertEquals("pdf", staged.format)
+            }
+            val committed = runBlocking { lib.commit(staged, true, Charsets.UTF_8, HeadingRule()) }
+            imported = committed
+            assertTrue(lib.original(committed).isFile)
+            if (committed.format == "txt")
+                assertTrue(File(lib.revision(committed), "text.utf8").isFile)
+        } finally {
+            if (imported != null) runBlocking { lib.remove(imported!!) }
+            else runBlocking { lib.dir(staged.id).deleteRecursively() }
         }
     }
 
@@ -55,21 +156,52 @@ class ReadingJourneyTest {
         val id = uid()
         val staged = Book(id, "Smoke-" + id, "txt", "test-" + id, false)
         lib.dir(id).mkdirs()
-        val body = "Chapter 1\nA quiet harbour. 海風 🌊\n\n第十二章 山雨\nAway."
+        val paragraph = "A quiet harbour. 海風 🌊 ".repeat(700)
+        val body = "Chapter 1\n$paragraph\n\n第十二章 山雨\nAway."
         lib.original(staged).writeText(body)
         val book = runBlocking { lib.commit(staged, true, Charsets.UTF_8, HeadingRule()) }
         try {
+            val target = body.indexOf("harbour") + paragraph.length / 2
+            val saved = textLocation(lib.revision(book), target.toLong())
+            runBlocking {
+                lib.shelf.position(
+                    book.id,
+                    book.revision,
+                    saved,
+                    target.toDouble() / body.length,
+                )
+            }
             ui.waitUntil(60000) {
                 ui.onAllNodesWithText(book.title).fetchSemanticsNodes().isNotEmpty()
             }
-            ui.onNodeWithText(book.title).performClick()
+            ui.onAllNodesWithText(book.title).onLast().performClick()
+            val sectionLabel = ui.activity.getString(R.string.section) + " 1"
             ui.waitUntil(30000) {
-                ui.onAllNodesWithText("Section 1", substring = true)
+                ui.onAllNodesWithText(sectionLabel, substring = true)
                     .fetchSemanticsNodes()
                     .isNotEmpty()
             }
-            ui.onNodeWithText("Section 1", substring = true).performClick()
-            ui.onNodeWithText("Contents").performClick()
+            ui.waitUntil(30000) {
+                ui.activity.supportFragmentManager.fragments.any {
+                    it is org.readium.r2.navigator.epub.EpubNavigatorFragment
+                }
+            }
+            var restoredOffset = -1L
+            ui.runOnUiThread {
+                val locator =
+                    ui.activity.supportFragmentManager.fragments
+                        .filterIsInstance<org.readium.r2.navigator.epub.EpubNavigatorFragment>()
+                        .first()
+                        .currentLocator
+                        .value
+                restoredOffset = textOffset(lib.revision(book), locator.toJSON().toString())
+            }
+            assertTrue(
+                "reader must reopen at the saved mid-paragraph passage",
+                kotlin.math.abs(restoredOffset - target) <= 512,
+            )
+            ui.onNodeWithText(sectionLabel, substring = true).performClick()
+            ui.onNodeWithText(ui.activity.getString(R.string.contents)).performClick()
             ui.waitUntil(20000) {
                 ui.onAllNodesWithText("第十二章 山雨").fetchSemanticsNodes().isNotEmpty()
             }

@@ -42,6 +42,20 @@ fun ListenPanel(ctx: MainActivity, b: Book, state: ReaderState, close: () -> Uni
     var custom by remember { mutableStateOf("") }
     var sample by remember { mutableStateOf<TextToSpeech?>(null) }
     var available by remember { mutableStateOf(samsungDefault(ctx)) }
+    LaunchedEffect(session.book, session.deadline, session.chapterTimer, live) {
+        if (live) {
+            minutes =
+                when {
+                    session.chapterTimer -> -1
+                    session.deadline == 0L -> 0
+                    else ->
+                        ((session.deadline - SystemClock.elapsedRealtime()).coerceAtLeast(0) + 59999)
+                            .div(60000)
+                            .toInt()
+                            .coerceIn(1, 180)
+                }
+        }
+    }
     val settings =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) {
             available = samsungDefault(ctx)
@@ -184,7 +198,7 @@ fun ListenPanel(ctx: MainActivity, b: Book, state: ReaderState, close: () -> Uni
         }
         if (voices.isNotEmpty()) Action(R.string.source_here) { command("open", true) }
         val follow = androidx.datastore.preferences.core.booleanPreferencesKey("follow")
-        Toggle(R.string.follow_speech, prefs[follow] ?: false) { value ->
+        Toggle(R.string.follow_speech, prefs[follow] ?: true) { value ->
             scope.launch { ctx.settings.edit { it[follow] = value } }
         }
         Text(stringResource(R.string.speed) + " · " + rate + "×")

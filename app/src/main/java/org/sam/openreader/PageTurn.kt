@@ -20,6 +20,7 @@ class PageTurn(context: Context) : FrameLayout(context) {
     var restore: () -> Unit = {}
     var settled: () -> Unit = {}
     var allowTurn: () -> Boolean = { true }
+    var onTurnAccepted: () -> Unit = {}
     var pending = false
         private set
 
@@ -29,6 +30,7 @@ class PageTurn(context: Context) : FrameLayout(context) {
     private var distance = 0f
     private var animator: ValueAnimator? = null
     private var animationCommits = false
+    private var turnNotified = false
     private var velocity: VelocityTracker? = null
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
 
@@ -50,6 +52,7 @@ class PageTurn(context: Context) : FrameLayout(context) {
             }
         )
         pending = true
+        turnNotified = false
         if (!advance(next)) {
             finish(false, false)
             return false
@@ -70,7 +73,15 @@ class PageTurn(context: Context) : FrameLayout(context) {
     }
 
     fun turn(next: Boolean) {
-        if (begin(next)) animateTo(true)
+        if (!allowTurn()) return
+        if (pending) interruptCommittedTurn()
+        turnNotified = false
+        if (width == 0 || height == 0 || !advance(next)) return
+        if (!turnNotified) {
+            turnNotified = true
+            onTurnAccepted()
+        }
+        settled()
     }
 
     private fun interruptCommittedTurn() {
@@ -85,6 +96,10 @@ class PageTurn(context: Context) : FrameLayout(context) {
     }
 
     private fun animateTo(commit: Boolean) {
+        if (commit && !turnNotified) {
+            turnNotified = true
+            onTurnAccepted()
+        }
         if (mode == 3 || !ValueAnimator.areAnimatorsEnabled()) {
             finish(commit)
             return
@@ -122,6 +137,10 @@ class PageTurn(context: Context) : FrameLayout(context) {
     }
 
     override fun onInterceptTouchEvent(e: MotionEvent): Boolean {
+        // A down during settle is a fresh page command. Resolve the previous command now,
+        // then let this gesture reach the renderer so no valid input is lost to animation.
+        if (e.actionMasked == MotionEvent.ACTION_DOWN && animator != null)
+            interruptCommittedTurn()
         if (animator != null) return true
         when (e.actionMasked) {
             MotionEvent.ACTION_DOWN -> {

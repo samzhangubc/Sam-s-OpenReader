@@ -8,6 +8,8 @@
     <string name="author">作者</string>
     <string name="import_date">匯入日期</string>
     <string name="continue_reading">繼續閱讀</string>
+    <string name="saved_position">已儲存閱讀位置</string>
+    <string name="saved_page">第 %1$d 頁</string>
     <string name="settings">設定</string>
     <string name="language">介面語言</string>
     <string name="follow_system">跟隨系統</string>
@@ -40,6 +42,7 @@
     <string name="export_original">匯出原檔</string>
     <string name="export_edited">匯出編輯後的 TXT</string>
     <string name="loading">處理中…</string>
+    <string name="rebuilding_index">正在準備 TXT 閱讀索引…</string>
     <string name="invalid">無法處理檔案。請檢查編碼、檔案格式、可用空間和存取權限。</string>
     <string name="bookmarks">書籤</string>
     <string name="bookmark">加入書籤</string>

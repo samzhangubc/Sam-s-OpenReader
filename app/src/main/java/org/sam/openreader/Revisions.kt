@@ -3,6 +3,8 @@ package org.sam.openreader
 import androidx.room.withTransaction
 import java.io.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
 
@@ -37,7 +39,8 @@ suspend fun Library.draft(
                 if (input != source) input.delete()
                 input = output
             }
-            TextFiles.publish(folder, book.title, rule)
+            val mappedRule = remapManualDecisions(revision(book), target, folder, rule)
+            TextFiles.publish(folder, book.title, mappedRule)
             Draft(book, next, count, samples)
         } catch (e: Throwable) {
             folder.deleteRecursively()
@@ -105,33 +108,97 @@ fun textOffset(folder: File, location: String): Long {
     }
 }
 
-fun textLocation(folder: File, offset: Long): String {
+internal data class IndexedTextLocation(
+    val resource: Int,
+    val anchor: Long,
+    val canonicalOffset: Long,
+    val progression: Double? = null,
+    val before: String? = null,
+    val highlight: String? = null,
+    val after: String? = null,
+)
+
+internal fun indexedTextLocation(folder: File, offset: Long): IndexedTextLocation {
+    var resource = 0
     var resourceStart = 0L
-    val href =
-        RandomAccessFile(File(folder, "resources.idx"), "r").use { f ->
-            val slot = floorIndex(f, 20, offset)
-            f.seek(slot*20)
-            resourceStart=f.readLong()
-            "r" + slot + ".xhtml"
-        }
-    val anchor =
-        RandomAccessFile(File(folder, "lines.idx"), "r").use { f ->
-            if (f.length() == 0L) 0L
-            else {
-                f.seek(16 * floorIndex(f, 16, offset))
-                f.readLong()
+    var anchor = offset
+    var before: String? = null
+    var highlight: String? = null
+    var after: String? = null
+    var progression: Double? = null
+    val segmentFile = File(folder, "segments.idx")
+    if (hasCurrentSegmentIndex(folder) && segmentFile.length() >= 24) {
+        RandomAccessFile(segmentFile, "r").use { f ->
+            val i = floorIndex(f, 24, offset)
+            f.seek(i * 24)
+            anchor = f.readLong()
+            val byteStart = f.readLong()
+            resource = f.readInt()
+            val byteLength = f.readInt().coerceIn(0, 32768)
+            if (byteLength > 0) {
+                val bytes = ByteArray(byteLength)
+                RandomAccessFile(File(folder, "text.utf8"), "r").use { source ->
+                    source.seek(byteStart)
+                    source.readFully(bytes)
+                }
+                val part = String(bytes, Charsets.UTF_8)
+                val at = (offset - anchor).toInt().coerceIn(0, part.length)
+                val start = at.coerceAtMost(part.length)
+                val end = minOf(part.length, start + 48)
+                val selected = part.substring(start, end)
+                if (selected.isNotBlank()) {
+                    before = part.substring(maxOf(0, start - 48), start)
+                    highlight = selected
+                    after = part.substring(end, minOf(part.length, end + 24))
+                }
             }
         }
-    return JSONObject()
-        .put("href", href)
+    } else {
+        RandomAccessFile(File(folder, "resources.idx"), "r").use { f ->
+            val slot = floorIndex(f, 20, offset)
+            f.seek(slot * 20)
+            resourceStart = f.readLong()
+            resource = slot.toInt()
+            val nextStart =
+                if ((slot + 1) * 20 < f.length()) {
+                    f.seek((slot + 1) * 20)
+                    f.readLong()
+                } else File(folder, "text.length").takeIf { it.exists() }?.readText()?.toLongOrNull()
+                    ?: resourceStart
+            progression =
+                ((offset - resourceStart).toDouble() / (nextStart - resourceStart).coerceAtLeast(1))
+                    .coerceIn(0.0, 1.0)
+        }
+        RandomAccessFile(File(folder, "lines.idx"), "r").use { f ->
+            if (f.length() > 0) {
+                f.seek(16 * floorIndex(f, 16, offset))
+                anchor = f.readLong()
+            }
+        }
+    }
+    return IndexedTextLocation(resource, anchor, offset, progression, before, highlight, after)
+}
+
+fun textLocation(folder: File, offset: Long): String {
+    val position = indexedTextLocation(folder, offset)
+    val locations = JSONObject()
+        .put("canonicalOffset", position.canonicalOffset)
+        .put("fragments", org.json.JSONArray().put("s" + position.anchor))
+    position.progression?.let { locations.put("progression", it) }
+    val locator = JSONObject()
+        .put("href", "r${position.resource}.xhtml")
         .put("type", "application/xhtml+xml")
-        .put(
-            "locations",
+        .put("locations", locations)
+    position.highlight?.let {
+        locator.put(
+            "text",
             JSONObject()
-                .put("canonicalOffset", offset)
-                .put("fragments", org.json.JSONArray().put("s" + maxOf(anchor,resourceStart))),
+                .put("before", position.before.orEmpty())
+                .put("highlight", it)
+                .put("after", position.after.orEmpty()),
         )
-        .toString()
+    }
+    return locator.toString()
 }
 
 fun floorIndex(f: RandomAccessFile, stride: Long, offset: Long): Long {
@@ -153,7 +220,7 @@ private fun remap(folder: File, offset: Long, reverse: Boolean = false): Long {
     }
 }
 
-private fun remapFile(file: File, offset: Long, reverse: Boolean): Long {
+private fun remapFile(file: File, offset: Long, reverse: Boolean = false): Long {
     var delta = 0L
     DataInputStream(file.inputStream().buffered()).use { f ->
         repeat((file.length() / 16).toInt()) {
@@ -169,6 +236,57 @@ private fun remapFile(file: File, offset: Long, reverse: Boolean): Long {
         }
     }
     return offset + delta
+}
+
+internal suspend fun remapManualDecisions(
+    sourceFolder: File,
+    target: File,
+    resultFolder: File,
+    rule: HeadingRule,
+): HeadingRule {
+    val decisions = rule.excluded + rule.included
+    if (decisions.isEmpty()) return rule
+    val sourceOffsets = RandomAccessFile(File(sourceFolder, "lines.idx"), "r").use { index ->
+        decisions.associateWith { line ->
+            val at = (line - 1L) * 16
+            if (line < 1 || at + 8 > index.length()) null
+            else {
+                index.seek(at)
+                index.readLong()
+            }
+        }
+    }
+    val maps = resultFolder.listFiles().orEmpty()
+        .filter { it.name.startsWith("edits.") }
+        .sortedBy { it.name }
+    val requested =
+        sourceOffsets.mapNotNull { (line, offset) ->
+            offset?.let { old ->
+                line to maps.fold(old) { at, file -> remapFile(file, at) }
+            }
+        }.sortedBy { it.second }
+    val lineMap = mutableMapOf<Int, Int>()
+    var request = 0
+    var offset = 0L
+    var lastLine = 1
+    target.bufferedReader().use { input ->
+        for (part in TextFiles.parts(input)) {
+            currentCoroutineContext().ensureActive()
+            lastLine = part.line
+            val end = offset + part.text.length
+            while (request < requested.size && requested[request].second <= end) {
+                lineMap[requested[request].first] = part.line
+                request++
+            }
+            offset = end + if (part.newline) 1 else 0
+        }
+    }
+    while (request < requested.size) {
+        lineMap[requested[request].first] = lastLine
+        request++
+    }
+    fun remapped(lines: Set<Int>) = lines.mapTo(mutableSetOf()) { lineMap[it] ?: it }
+    return rule.copy(excluded = remapped(rule.excluded), included = remapped(rule.included))
 }
 
 suspend fun Library.applyDraft(d: Draft) =
@@ -187,8 +305,15 @@ suspend fun Library.applyDraft(d: Draft) =
                         remap(if (undo) old else folder, textOffset(old, loc), undo),
                     )
             val visual = map(live.visual)
-            check(shelf.revise(live.id, live.revision, d.result.revision, visual) == 1)
-            shelf.speech(live.id, d.result.revision, map(live.spoken))
+            val progress =
+                if (visual.isBlank()) live.progress
+                else {
+                    val length = File(folder, "text.length").readText().toLongOrNull() ?: 0L
+                    if (length == 0L) 0.0
+                    else (textOffset(folder, visual).toDouble() / length).coerceIn(0.0, 1.0)
+                }
+            check(shelf.revise(live.id, live.revision, d.result.revision, visual, progress) == 1)
+            shelf.speech(live.id, d.result.revision, map(live.spoken), null)
             val marks = shelf.allMarks(live.id)
             shelf.clearMarks(live.id)
             marks.forEach { shelf.mark(it.copy(location = map(it.location))) }

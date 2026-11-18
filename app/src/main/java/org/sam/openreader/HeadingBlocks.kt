@@ -33,8 +33,7 @@ private val units =
 
 fun validChineseNumber(s: String): Boolean {
     if (s.isEmpty() || s.length > 32) return false
-    if (s.all { it in DIGITS })
-        return s.length == 1 || s.startsWith("〇") || s.startsWith("零") || s.none { it in "两兩" }
+    if (s.all { it in DIGITS }) return true
     var lastSmall = 4
     var lastBig = 16
     var previousUnit = false
@@ -62,9 +61,73 @@ fun validChineseNumber(s: String): Boolean {
     return s.last() !in "零〇"
 }
 
+private const val englishSmall =
+    "zero|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|thirty|forty|fifty|sixty|seventy|eighty|ninety"
+private const val englishUnit = "one|two|three|four|five|six|seven|eight|nine"
+internal val englishNumberPattern =
+    "(?i:(?:" + englishSmall + ")(?:[- ](?:" + englishUnit + "))?(?:\\s+(?:hundred|thousand)(?:\\s+(?:and\\s+)?(?:" + englishSmall + ")(?:[- ](?:" + englishUnit + "))?)?){0,2})"
+
 private val numberToken =
-    Regex("[0-9]+|[" + DIGITS + units.keys.joinToString("") + "]+|[IVXLCDMivxlcdm]+|[A-Za-z]+")
-private val romanToken = Regex("(?i:M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3}))")
+    Regex(
+        "[0-9]+(?:\\.[0-9]+){0,5}|[" + DIGITS + units.keys.joinToString("") + "]+(?:[.．][" + DIGITS + units.keys.joinToString("") + "]+){0,5}|" + englishNumberPattern + "|[A-Za-z]+"
+    )
+private val romanToken = Regex("(?i)(?=[mdclxvi])M{0,3}(CM|CD|D?C{0,3})(XC|XL|L?X{0,3})(IX|IV|V?I{0,3})")
+private val englishSmallWords = englishSmall.split('|')
+
+fun validEnglishNumber(s: String): Boolean {
+    val parts = s.lowercase().replace('-', ' ').split(Regex("\\s+")).filter(String::isNotEmpty)
+    if (parts.isEmpty() || parts.size > 8) return false
+    var total = 0
+    var value = 0
+    var previous = ""
+    var hadAnd = false
+    for (part in parts) {
+        val unit = englishSmallWords.indexOf(part)
+        val tens = mapOf("twenty" to 20, "thirty" to 30, "forty" to 40, "fifty" to 50, "sixty" to 60, "seventy" to 70, "eighty" to 80, "ninety" to 90)[part]
+        when {
+            part == "and" -> {
+                if (previous !in setOf("hundred", "thousand")) return false
+                hadAnd = true
+                previous = "and"
+            }
+            part == "hundred" -> {
+                if (previous != "unit" || value !in 1..9) return false
+                value *= 100
+                previous = part
+            }
+            part == "thousand" -> {
+                if (previous !in setOf("unit", "hundred", "tens") || value !in 1..999) return false
+                total += value * 1000
+                value = 0
+                previous = part
+            }
+            unit in 1..19 -> {
+                when (previous) {
+                    "tens" -> value += unit
+                    "hundred", "thousand", "and" -> value += unit
+                    "" -> value += unit
+                    else -> return false
+                }
+                previous = "unit"
+                hadAnd = false
+            }
+            unit == 0 -> {
+                if (parts.size != 1 || previous.isNotEmpty()) return false
+                previous = "zero"
+            }
+            tens != null -> {
+                if (previous !in setOf("", "hundred", "thousand", "and")) return false
+                if (previous == "and" && !hadAnd) return false
+                if (value % 100 != 0) return false
+                value += tens
+                previous = "tens"
+                hadAnd = false
+            }
+            else -> return false
+        }
+    }
+    return previous.isNotEmpty() && total + value <= 999_999
+}
 
 fun blockMatch(line: String, blocks: List<Block>): Boolean {
     var cursor = 0
@@ -85,8 +148,11 @@ fun blockMatch(line: String, blocks: List<Block>): Boolean {
                 val systems = block.value.lowercase().split('|').map { it.trim() }
                 val ok =
                     (("decimal" in systems || "0-9" in systems) && token.all { it in '0'..'9' }) ||
-                        ("中文" in systems && validChineseNumber(token)) ||
+                        (("decimal" in systems || "0-9" in systems) && token.matches(Regex("[0-9]+(?:\\.[0-9]+){1,5}"))) ||
+                        (("中文" in systems || "chinese" in systems) &&
+                            token.split(Regex("[.．]")).all(::validChineseNumber)) ||
                         ("roman" in systems && romanToken.matches(token)) ||
+                        (("english" in systems || "words" in systems) && validEnglishNumber(token)) ||
                         systems.any { it.startsWith("=") && it.drop(1).equals(token, true) }
                 if (!ok) return false
                 cursor += token.length

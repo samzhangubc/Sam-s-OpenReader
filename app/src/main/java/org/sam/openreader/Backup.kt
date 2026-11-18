@@ -54,6 +54,7 @@ suspend fun Library.backup(
                         .put("format", b.format)
                         .put("visual", b.visual)
                         .put("spoken", b.spoken)
+                        .put("progress", b.progress)
                         .put("style", b.style)
                 val marks = JSONArray()
                 shelf.allMarks(b.id).forEach {
@@ -185,6 +186,7 @@ suspend fun Library.restoreBackup(
                             j.optString("spoken"),
                             style = override,
                             author = j.optString("author"),
+                            progress = j.optDouble("progress", -1.0),
                         )
                     staged += b
                     check(dir(b.id).mkdir())

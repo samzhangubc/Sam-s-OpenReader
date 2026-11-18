@@ -8,13 +8,18 @@ import org.readium.r2.shared.publication.Publication
 import org.readium.r2.shared.publication.services.content.Content
 import org.readium.r2.shared.publication.services.content.content
 
-data class Passage(val text: String, val location: String, val chapter: String)
+data class Passage(
+    val text: String,
+    val location: String,
+    val chapter: String,
+    val progress: Double? = null,
+)
 
 interface SpeechSource : AutoCloseable {
     suspend fun step(direction: Int, paragraph: Boolean = false): Passage?
 }
 
-private class TxtSpeech(folder: File, location: String) : SpeechSource {
+private class TxtSpeech(private val folder: File, location: String) : SpeechSource {
     private val lines = RandomAccessFile(File(folder, "lines.idx"), "r")
     private val data = RandomAccessFile(File(folder, "text.utf8"), "r")
     private val resources = RandomAccessFile(File(folder, "resources.idx"), "r")
@@ -106,7 +111,12 @@ private class TxtSpeech(folder: File, location: String) : SpeechSource {
             val offset = lines.readLong()
             val idx = floorIndex(resources, 20, offset)
             resources.seek(idx * 20 + 16)
-            return Passage(part, "t:" + line + ":" + within, resources.readInt().toString())
+            val location = "t:" + line + ":" + within
+            val total = File(folder, "text.length").takeIf { it.exists() }?.readText()?.toLongOrNull()
+            val progress = total?.takeIf { it > 0 }?.let {
+                (textOffset(folder, location).toDouble() / it).coerceIn(0.0, 1.0)
+            }
+            return Passage(part, location, resources.readInt().toString(), progress)
         }
         return null
     }
@@ -169,6 +179,7 @@ private class EpubSpeech(val pub: Publication, loc: String) : SpeechSource {
             part,
             el.locator.toJSON().put("speechOffset", offset).toString(),
             el.locator.href.toString(),
+            el.locator.locations.totalProgression,
         )
     }
 
@@ -198,7 +209,12 @@ private class PdfSpeech(val pdf: PdfBook, location: String) : SpeechSource {
             if (offset < text.length) {
                 val part = sentence(text.substring(offset, minOf(offset + 2048, text.length)))
                 used = part.length
-                return Passage(part, page.toString() + ":" + offset, page.toString())
+                return Passage(
+                    part,
+                    page.toString() + ":" + offset,
+                    page.toString(),
+                    (page + offset.toDouble() / text.length.coerceAtLeast(1)) / pdf.count,
+                )
             }
             page++
             offset = 0
