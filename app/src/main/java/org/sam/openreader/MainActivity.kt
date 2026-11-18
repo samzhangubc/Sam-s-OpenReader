@@ -201,7 +201,12 @@ fun OpenReader(
         selected = null
         if (b != null)
             scope.launch {
-                lib.shelf.position(b.id, b.revision, state.location)
+                lib.shelf.position(
+                    b.id,
+                    b.revision,
+                    state.location,
+                    state.progress.coerceIn(0.0, 1.0),
+                )
                 if (!b.permanent && SpeechService.status.value.book != b.id) lib.remove(b)
             }
     }
@@ -322,7 +327,13 @@ fun OpenReader(
                                         headlineContent = { Text(item.title) },
                                         supportingContent = {
                                             Text(
-                                                listOf(item.format.uppercase(), item.author)
+                                                listOf(
+                                                        item.format.uppercase(),
+                                                        item.author,
+                                                        (item.progress.coerceIn(0.0, 1.0) * 100)
+                                                            .toInt()
+                                                            .toString() + "%",
+                                                    )
                                                     .filter { it.isNotBlank() }
                                                     .joinToString(" · ")
                                             )

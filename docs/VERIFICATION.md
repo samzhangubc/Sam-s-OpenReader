@@ -19,13 +19,14 @@ PDF extraction is conditional on an accessible text layer. The runtime requires 
 
 ## SDD v0.8 source review
 
-Reviewed against the existing checkout on 2026-11-18. This pass made a source-level correction to `PageTurn.kt` so a new turn cancels the active animation and resolves its committed or cancelled destination before starting the new turn. The SDD v0.8 document was already an uncommitted local change and is included in the implementation handoff.
+Reviewed against the existing checkout on 2026-11-18. This pass made source-level corrections to `PageTurn.kt` so a new turn cancels the active animation and resolves its committed or cancelled destination before starting the new turn, and to library progress storage/display with a Room migration from database version 2 to version 3. The SDD v0.8 document was already an uncommitted local change and is included in the implementation handoff.
 
 No Android build, unit tests, instrumentation tests or A56 measurements were run in this environment. The historical device test above predates these source changes. The SDD acceptance plan remains the implementation and release checklist.
 
 | Area | Source review status |
 | --- | --- |
 | Page-turn animation interruption | Updated to resolve the prior animation before a fresh page turn. Build, rapid-input tests, TalkBack and renderer integration remain unverified. |
+| Library progress | Added a persisted progress field, Room 2→3 migration, and shelf display. The visual and speech locator update paths and migration on-device remain unverified. |
 | TXT chapter-indexed reopen, bounded prefetch and offset mapping | SDD requirement. Implementation remains unverified. |
 | Chapter parsing, front matter and manual overrides | Existing parser source is present. SDD v0.8 fixture coverage and persistence behavior remain unverified. |
 | Library progress and resume consistency | Existing saved locator is present. Whole-book progress display and transactional consistency remain unverified. |
@@ -36,4 +37,4 @@ No Android build, unit tests, instrumentation tests or A56 measurements were run
 
 ## Still required
 
-Run the SDD's Windows Gradle build, unit tests and lint checks, then connected instrumentation tests when an Android environment is available. Perform physical A56 checks for Samsung TTS, screen-off playback, animation/selection gestures, fonts, and resource/power budgets. Record each result against the exact commit and app version that was tested.
+Build and device testing were requested, but this shell cannot find Java/JAVA_HOME, Android SDK or ADB. Gradle stops before starting with “JAVA_HOME is not set and no 'java' command could be found in your PATH.” `adb` is also not recognized. The A56 is not visible to the current build/test environment despite being connected by the user. Run the SDD's Windows Gradle build, unit tests and lint checks, then connected instrumentation tests when those tools are available. Perform physical A56 checks for Samsung TTS, screen-off playback, animation/selection gestures, fonts, and resource/power budgets. Record each result against the exact commit and app version that was tested.

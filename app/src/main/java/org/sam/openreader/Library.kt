@@ -47,6 +47,7 @@ data class Book(
     val author: String = "",
     val imported: Long = System.currentTimeMillis(),
     @ColumnInfo(defaultValue = "0") val removed: Long = 0,
+    @ColumnInfo(defaultValue = "0") val progress: Double = 0.0,
 )
 
 @Entity(primaryKeys = ["bookId", "location"])
@@ -71,11 +72,12 @@ interface Shelf {
 
     @Query("UPDATE Book SET permanent=1 WHERE id=:id") suspend fun keep(id: String)
 
-    @Query("UPDATE Book SET visual=:locator, opened=:time WHERE id=:id AND revision=:revision")
+    @Query("UPDATE Book SET visual=:locator, progress=:progress, opened=:time WHERE id=:id AND revision=:revision")
     suspend fun position(
         id: String,
         revision: String,
         locator: String,
+        progress: Double,
         time: Long = System.currentTimeMillis(),
     )
 
@@ -108,7 +110,7 @@ interface Shelf {
     @Query("SELECT id FROM Book WHERE permanent=0") suspend fun temporary(): List<String>
 }
 
-@Database(entities = [Book::class, Bookmark::class], version = 2, exportSchema = false)
+@Database(entities = [Book::class, Bookmark::class], version = 3, exportSchema = false)
 abstract class LibraryDb : RoomDatabase() {
     abstract fun shelf(): Shelf
 }
@@ -132,6 +134,11 @@ class Library(val context: Context) {
                 object : androidx.room.migration.Migration(1, 2) {
                     override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
                         db.execSQL("ALTER TABLE Book ADD COLUMN removed INTEGER NOT NULL DEFAULT 0")
+                    }
+                },
+                object : androidx.room.migration.Migration(2, 3) {
+                    override fun migrate(db: androidx.sqlite.db.SupportSQLiteDatabase) {
+                        db.execSQL("ALTER TABLE Book ADD COLUMN progress REAL NOT NULL DEFAULT 0")
                     }
                 }
             )

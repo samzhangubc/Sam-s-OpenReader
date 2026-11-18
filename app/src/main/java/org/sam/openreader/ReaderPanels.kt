@@ -79,13 +79,20 @@ fun ReaderScreen(
             pub?.close()
             pdf?.close()
             val loc = state.location
-            activity.lifecycleScope.launch { lib.shelf.position(b.id, b.revision, loc) }
+            activity.lifecycleScope.launch {
+                lib.shelf.position(b.id, b.revision, loc, state.progress.coerceIn(0.0, 1.0))
+            }
         }
     }
     LaunchedEffect(state.location) {
         if (state.location.isNotEmpty()) {
             delay(250)
-            lib.shelf.position(b.id, b.revision, state.location)
+            lib.shelf.position(
+                b.id,
+                b.revision,
+                state.location,
+                state.progress.coerceIn(0.0, 1.0),
+            )
         }
     }
     val toggle = { show(if (panel == null) Panel.MENU else null) }
