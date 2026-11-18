@@ -323,7 +323,13 @@ object TextFiles {
                                 lines.writeLong(offset)
                                 lines.writeLong(bytes)
                             }
+                            if (heading != null) {
+                                write(
+                                    "<span style='display:block;font-size:1.35em;font-weight:600;margin-bottom:0.5em'>"
+                                )
+                            }
                             write("<span id='s" + offset + "'>" + xml(part.text) + "</span>")
+                            if (heading != null) write("</span><br/>")
                             if (part.newline) write("<br/>")
                             length += part.text.length
                             bytes += part.text.toByteArray().size + (if (part.newline) 1 else 0)
