@@ -28,6 +28,7 @@ class PageTurn(context: Context) : FrameLayout(context) {
     private var top = 0f
     private var distance = 0f
     private var animator: ValueAnimator? = null
+    private var animationCommits = false
     private var velocity: VelocityTracker? = null
     private val slop = ViewConfiguration.get(context).scaledTouchSlop
 
@@ -39,7 +40,9 @@ class PageTurn(context: Context) : FrameLayout(context) {
     }
 
     private fun begin(next: Boolean): Boolean {
-        if (width == 0 || height == 0 || pending || !allowTurn()) return false
+        if (!allowTurn()) return false
+        if (pending) interruptCommittedTurn()
+        if (width == 0 || height == 0) return false
         if (width.toLong() * height > 8_000_000) return advance(next)
         old.setImageBitmap(
             Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888).also {
@@ -70,11 +73,23 @@ class PageTurn(context: Context) : FrameLayout(context) {
         if (begin(next)) animateTo(true)
     }
 
+    private fun interruptCommittedTurn() {
+        val commit = animationCommits
+        animator?.let {
+            it.removeAllUpdateListeners()
+            it.removeAllListeners()
+            it.cancel()
+        }
+        animator = null
+        finish(commit = commit)
+    }
+
     private fun animateTo(commit: Boolean) {
         if (mode == 3 || !ValueAnimator.areAnimatorsEnabled()) {
             finish(commit)
             return
         }
+        animationCommits = commit
         animator =
             ValueAnimator.ofFloat(distance, if (commit) 1f else 0f).apply {
                 duration = 160
@@ -91,6 +106,11 @@ class PageTurn(context: Context) : FrameLayout(context) {
     }
 
     private fun finish(commit: Boolean, moved: Boolean = true) {
+        animator?.let {
+            it.removeAllUpdateListeners()
+            it.removeAllListeners()
+            it.cancel()
+        }
         if (!commit && moved) restore()
         old.visibility = GONE
         old.setImageDrawable(null)
