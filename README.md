@@ -10,6 +10,8 @@ Use JDK 17, Android SDK Platform 36, Build Tools 35.0.0, and Python 3. Run `./gr
 
 The [software design document](docs/SDD.md) defines the full release and its acceptance gates. [Verification status](docs/VERIFICATION.md) records outstanding behavior and hardware coverage. The [HTML design preview](docs/preview.html) is an earlier interactive mockup.
 
+The [OpenReader handbook](docs/handbook/01-start-here.md) provides workflow, architecture, format, reader, TTS, privacy, and verification guides. Its chapters are being published in stages; implementation and acceptance status remain tracked in the SDD and verification report.
+
 ## License and support
 
 OpenReader is a free-of-charge personal project under the [MIT License](LICENSE), provided without a service-level agreement, guaranteed response time, or promise of indefinite maintenance. Third-party fonts and dependencies retain their respective licenses.
